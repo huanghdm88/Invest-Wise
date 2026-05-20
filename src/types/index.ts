@@ -1,0 +1,157 @@
+/** 优先级，对应 PRD § 4.d 严重性定义 */
+export type Priority = "P0" | "P1" | "P2" | "P3";
+
+/** 风险容忍度档位，PRD § 5.a 主动偏好输入 */
+export type RiskTolerance = "R1" | "R2" | "R3";
+
+/** 投资阶段 */
+export type InvestmentStage = "early-growth" | "late-pre-ipo";
+
+/** 工作模式 */
+export type WorkMode = "auto" | "fact-check" | "challenge";
+
+/** 项目解析状态 */
+export type ProjectStatus = "draft" | "parsing" | "parsed" | "failed";
+
+/** 文件类型 */
+export type FileKind = "pdf" | "word" | "ppt" | "excel" | "other";
+
+/** 文件解析阶段 */
+export type FileStatus = "uploading" | "parsing" | "indexed" | "failed";
+
+export interface KnowledgeFile {
+  id: string;
+  name: string;
+  kind: FileKind;
+  size: string;
+  status: FileStatus;
+  category?: "投决议案" | "财务尽调" | "法律尽调" | "商业尽调" | "BP" | "其他";
+  uploadedAt: string;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  industry: string;
+  stage: InvestmentStage;
+  riskTolerance: RiskTolerance;
+  customInstruction: string;
+  webSearch: boolean;
+  status: ProjectStatus;
+  updatedAt: string;
+  files: KnowledgeFile[];
+}
+
+/** 溯源锚点：一定要带原文页码 */
+export interface SourceAnchor {
+  document: string;
+  page: number | string;
+  paragraph?: string;
+  /** 原文（保留段落） */
+  excerpt: string;
+  /** 高亮的关键字词 */
+  highlight?: string[];
+}
+
+/** 事实验证：对冲面板 */
+export interface FactCompare {
+  label: string;
+  claim: { source: string; value: string };
+  reality: { source: string; value: string };
+  /** 差异百分比，正数=高估 */
+  delta?: string;
+  level: Priority;
+}
+
+/** 挑战质询：单条 */
+export interface ChallengeItem {
+  id: string;
+  priority: Priority;
+  title: string;
+  /** 底层矛盾，加粗描述 */
+  coreLogic: string;
+  /** 1-3 条事实底座 */
+  evidence: SourceAnchor[];
+  /** 行动建议（如降估值、加对赌） */
+  actionAdvice: string[];
+  category: "行业" | "团队" | "产品" | "财务" | "合规" | "估值";
+}
+
+/** 反问数据补充表单字段 */
+export interface ClarificationField {
+  key: string;
+  label: string;
+  hint?: string;
+  type: "text" | "number" | "select";
+  options?: string[];
+  required?: boolean;
+}
+
+/** 智能路由无法识别意图时，给出待选模式让用户决定 */
+export interface ModePickOption {
+  mode: Extract<WorkMode, "fact-check" | "challenge">;
+  label: string;
+  desc: string;
+  /** 推荐选项，会高亮显示 */
+  recommended?: boolean;
+}
+
+export type AssistantBlock =
+  | { kind: "text"; text: string }
+  | {
+      kind: "clarification";
+      title: string;
+      reason: string;
+      fields: ClarificationField[];
+    }
+  | {
+      kind: "mode-pick";
+      title: string;
+      reason: string;
+      options: ModePickOption[];
+      /** 用户原始消息（便于二次提交） */
+      originalQuery: string;
+    }
+  | {
+      kind: "fact-verification";
+      title: string;
+      level: Priority;
+      summary: string;
+      compares: FactCompare[];
+      anchors: SourceAnchor[];
+      /** 句级引用，顺序即引用序号 [1] [2] [3]…，summary 内可用 [^N] 标记锚定 */
+      citations?: SourceAnchor[];
+    }
+  | {
+      kind: "challenge-list";
+      title: string;
+      summary: string;
+      items: ChallengeItem[];
+      citations?: SourceAnchor[];
+    }
+  | {
+      kind: "valuation";
+      title: string;
+      summary: string;
+      methods: Array<{
+        method: string;
+        range: string;
+        assumption: string;
+        applicability: string;
+      }>;
+      conclusion: string;
+      citations?: SourceAnchor[];
+    };
+
+export interface ChatMessage {
+  id: string;
+  role: "user" | "assistant" | "system";
+  /** 文本内容（用户消息或系统提示） */
+  text?: string;
+  /** Assistant 结构化输出 */
+  blocks?: AssistantBlock[];
+  /** 用户消息附带文件 */
+  attachments?: Array<{ name: string; size: string; kind: FileKind }>;
+  mode?: WorkMode;
+  createdAt: string;
+}

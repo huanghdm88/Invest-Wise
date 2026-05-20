@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --color-notion-bg: #ffffff;
+  --color-notion-sidebar: #f7f7f9;
+  --color-notion-text-primary: #111827;
+  --color-notion-text-secondary: #6b7280;
+  --color-notion-border: #e5e7eb;
+  --shadow-notion-card: 0 2px 10px rgba(0, 0, 0, 0.04);
+  --shadow-notion-deep: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+:root {
+  --background: 0 0% 100%;
+  --foreground: 222.2 47.4% 11.2%;
+  --muted: 210 40% 96.1%;
+  --muted-foreground: 215.4 16.3% 46.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222.2 47.4% 11.2%;
+  --card: 0 0% 100%;
+  --card-foreground: 222.2 47.4% 11.2%;
+  --border: 214.3 31.8% 91.4%;
+  --input: 214.3 31.8% 91.4%;
+  --primary: 222.2 47.4% 11.2%;
+  --primary-foreground: 210 40% 98%;
+  --secondary: 210 40% 96.1%;
+  --secondary-foreground: 222.2 47.4% 11.2%;
+  --accent: 210 40% 96.1%;
+  --accent-foreground: 222.2 47.4% 11.2%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --ring: 215 20.2% 65.1%;
+  --radius: 0.875rem;
+
+  /* 投决专用语义色 */
+  --p0: 0 84% 50%;        /* 否决级 - 深红 */
+  --p1: 24 95% 53%;       /* 博弈级 - 橙 */
+  --p2: 45 93% 47%;       /* 管控级 - 琥珀 */
+  --p3: 215 20% 50%;      /* 噪音级 - 灰 */
+  --brand: 220 13% 13%;   /* 主品牌色 - 深黑（gray-900） */
+  --brand-soft: 210 20% 96%;
+}
+
+@layer base {
+  * {
+    @apply border-[hsl(var(--border))];
+  }
+
+  body {
+    @apply bg-[hsl(var(--background))] text-[hsl(var(--foreground))] antialiased;
+    font-family: var(--font-sans);
+    font-feature-settings: "cv11", "ss01";
+  }
+
+  ::selection {
+    background: hsl(var(--brand) / 0.2);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #cccccc;
+    opacity: 1;
+  }
+}
+
+/* —— 复用 UI_Standard 的动画 —— */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #ffffff 25%, #e5e7eb 50%, #ffffff 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+@keyframes staged-reveal {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-staged-reveal {
+  opacity: 0;
+  animation: staged-reveal 0.45s ease forwards;
+}
+
+.thinking-shimmer-text {
+  display: inline-block;
+  background: linear-gradient(90deg, #111827 0%, #9ca3af 38%, #d1d5db 50%, #9ca3af 62%, #111827 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: thinking-shimmer-sweep 2.4s ease-in-out infinite;
+}
+
+@keyframes thinking-shimmer-sweep {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* 自定义滚动条 */
+.thin-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+.thin-scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+.thin-scroll::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.2); }
+
+/* 高亮溯源关键字 */
+.evidence-highlight {
+  background: hsl(45 100% 85%);
+  border-radius: 3px;
+  padding: 0 2px;
+  font-weight: 500;
+}

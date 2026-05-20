@@ -1,0 +1,441 @@
+import type { ChatMessage } from "@/src/types";
+
+/** 极光智算项目的演示会话 - 涵盖反问 / 事实验证 / 挑战质询 / 估值四类卡片 */
+export const mockMessages: ChatMessage[] = [
+  {
+    id: "m-greeting",
+    role: "system",
+    text:
+      "项目「极光智算 Pre-A 轮」资料库解析完成（5 份文件已入库），可发起事实验证或挑战质询。建议先核对议案与财务底稿的数据一致性。",
+    createdAt: "2026-05-12T09:20:00+08:00",
+  },
+  {
+    id: "m-user-1",
+    role: "user",
+    text: "对议案宣称的营收与经营性现金流做事实交叉验证。",
+    mode: "fact-check",
+    createdAt: "2026-05-12T09:22:14+08:00",
+  },
+  {
+    id: "m-assistant-1",
+    role: "assistant",
+    createdAt: "2026-05-12T09:22:48+08:00",
+    blocks: [
+      {
+        kind: "fact-verification",
+        title: "营收与经营性现金流交叉验证",
+        level: "P1",
+        summary:
+          "议案宣称的经营性现金流净额[^3]，与 FDD 底稿单体加总结果存在 15% 偏离[^4]；同时 LTM 营收口径在议案[^1]与审计报告[^2]之间基本一致，未发现量级跨越。投后估值数字在 BP[^5] 与增资协议[^6] 之间完全一致。",
+        compares: [
+          {
+            label: "2024 全年营收",
+            claim: { source: "投决议案 V3 · P8[^1]", value: "1.82 亿元" },
+            reality: { source: "财务审计报告 · P12[^2]", value: "1.79 亿元" },
+            delta: "+1.6%",
+            level: "P3",
+          },
+          {
+            label: "2024 经营性现金流净额",
+            claim: { source: "投决议案 V3 · P9[^3]", value: "+ 2,840 万元" },
+            reality: { source: "FDD 底稿 · 附注 4[^4]", value: "+ 2,415 万元" },
+            delta: "+15.0%",
+            level: "P1",
+          },
+          {
+            label: "投后估值（B 轮基础上）",
+            claim: { source: "BP · P22[^5]", value: "12.6 亿元" },
+            reality: { source: "增资协议原件 · P3[^6]", value: "12.6 亿元" },
+            delta: "0%",
+            level: "P3",
+          },
+        ],
+        anchors: [
+          {
+            document: "投决议案-V3.pdf",
+            page: 9,
+            paragraph: "三、财务摘要 / (3) 现金流",
+            excerpt:
+              "公司 2024 年度经营性现金流净额为 +2,840 万元，较上一年度同比改善约 27%。",
+            highlight: ["+2,840 万元", "27%"],
+          },
+          {
+            document: "FDD 底稿.xlsx",
+            page: "附注 4",
+            paragraph: "经营活动产生的现金流量净额（单体加总）",
+            excerpt:
+              "母公司 1,902 万 + 全资子公司 A 396 万 + 全资子公司 B 117 万 = 2,415 万元；与合并报表披露的 2,840 万存在 425 万差异。",
+            highlight: ["2,415 万元", "425 万差异"],
+          },
+        ],
+        citations: [
+          {
+            document: "投决议案-V3.pdf",
+            page: 8,
+            paragraph: "三、财务摘要 / (1) 收入",
+            excerpt: "2024 全年实现营业收入 1.82 亿元，较上一年度同比增长 36.8%。",
+            highlight: ["1.82 亿元", "36.8%"],
+          },
+          {
+            document: "财务审计报告.pdf",
+            page: 12,
+            paragraph: "经审计的合并利润表",
+            excerpt:
+              "本年度公司实现营业总收入 17,887 万元（折合 1.79 亿元），同比增长 34.5%。",
+            highlight: ["17,887 万元", "1.79 亿元"],
+          },
+          {
+            document: "投决议案-V3.pdf",
+            page: 9,
+            paragraph: "三、财务摘要 / (3) 现金流",
+            excerpt:
+              "公司 2024 年度经营性现金流净额为 +2,840 万元，较上一年度同比改善约 27%。",
+            highlight: ["+2,840 万元", "27%"],
+          },
+          {
+            document: "FDD 底稿.xlsx",
+            page: "附注 4",
+            paragraph: "经营活动产生的现金流量净额（单体加总）",
+            excerpt:
+              "母公司 1,902 万 + 全资子公司 A 396 万 + 全资子公司 B 117 万 = 2,415 万元；与合并报表披露的 2,840 万存在 425 万差异，未在附注中说明调节项。",
+            highlight: ["2,415 万元", "425 万差异"],
+          },
+          {
+            document: "BP_2026Q2.pptx",
+            page: 22,
+            paragraph: "本轮融资概览",
+            excerpt: "本轮拟按投前估值人民币 12.6 亿元定价，对应 PS 6×。",
+            highlight: ["12.6 亿元", "PS 6×"],
+          },
+          {
+            document: "增资协议原件.pdf",
+            page: 3,
+            paragraph: "第二条 估值条款",
+            excerpt:
+              "各方一致同意以投前估值人民币 12.6 亿元（含已转可转债转股）为基础进行本轮增资。",
+            highlight: ["12.6 亿元"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "m-user-route",
+    role: "user",
+    text: "这个项目整体怎么样？帮我看看。",
+    mode: "auto",
+    createdAt: "2026-05-12T09:28:02+08:00",
+  },
+  {
+    id: "m-assistant-route",
+    role: "assistant",
+    createdAt: "2026-05-12T09:28:35+08:00",
+    blocks: [
+      {
+        kind: "mode-pick",
+        title: "请先确认要执行的任务类型",
+        reason:
+          "您的问题表述较宽泛，智能路由无法在「事实交叉验证」与「挑战质询」之间做出可靠判断。请选择一种模式后，Agent 将基于当前知识库继续处理。",
+        originalQuery: "这个项目整体怎么样？帮我看看。",
+        options: [
+          {
+            mode: "fact-check",
+            label: "事实交叉验证",
+            desc: "核对议案、BP、FDD、审计报告中的关键数字与口径是否一致，输出差异清单与证据锚点",
+          },
+          {
+            mode: "challenge",
+            label: "挑战质询",
+            desc: "围绕投资逻辑、关键假设与执行风险生成投决会式质询清单与条款建议",
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "m-user-2",
+    role: "user",
+    text: "请输出该项目的核心投资逻辑挑战质询清单。",
+    mode: "challenge",
+    createdAt: "2026-05-12T09:31:02+08:00",
+  },
+  {
+    id: "m-assistant-2",
+    role: "assistant",
+    createdAt: "2026-05-12T09:31:47+08:00",
+    blocks: [
+      {
+        kind: "challenge-list",
+        title: "灵魂质询清单（4 条 · 已按 R2 稳健均衡型口径过滤）",
+        summary:
+          "总览：在 AI Agent 应用赛道高度内卷、底层模型成本占比偏高[^3] 的现状下，公司宣称的 60% 综合毛利[^4] 与人效水平[^2] 存在结构性张力。建议以条款约束对冲，详见下方。",
+        items: [
+          {
+            id: "c-1",
+            priority: "P1",
+            title: "估值逻辑断层与退出风险",
+            coreLogic:
+              "项目方按 PS 6× 计算投前估值[^1] 隐含 NTM 增速 +85%；但 2024 全年人效仅 47.1 万元[^2]，远低于行业基准 75–82 万元，公司如何跨越产能瓶颈以支撑该退出估值的净利润要求？",
+            evidence: [
+              {
+                document: "投决议案-V3.pdf",
+                page: 12,
+                excerpt:
+                  "项目方按 PS 6× × NTM 营收 2.1 亿计算投前估值 12.6 亿；隐含要求 NTM 增速 +85%。",
+                highlight: ["PS 6×", "+85%"],
+              },
+              {
+                document: "FDD 底稿.xlsx",
+                page: "附表 3-人员",
+                excerpt:
+                  "在职研发 38 人，2024 全年人效 47.1 万元，远低于行业基准（约 75–82 万元）。",
+                highlight: ["47.1 万元", "75–82 万元"],
+              },
+            ],
+            actionAdvice: [
+              "建议将投前估值下修 15% – 20%（落到 10.1 – 10.7 亿区间）",
+              "增设「次年扣非净利不低于 3,500 万」的全现金回购对赌，不可仅设股权补偿",
+              "Pre-A 轮释放 10% 股权用于回购缓冲池",
+            ],
+            category: "估值",
+          },
+          {
+            id: "c-2",
+            priority: "P1",
+            title: "底层模型 API 成本占比偏高 → 规模不经济",
+            coreLogic:
+              "Agent 服务每完成一笔自动化任务需调用 6.4 次 GPT-5.4 / Claude 4.6 推理；底层 API 成本占客单价 38%[^3]，毛利率结构脆弱。公司假设 2026 推理价格下降 40%[^4] 推动毛利至 55%，但缺乏合同 / 询价依据。",
+            evidence: [
+              {
+                document: "FDD 底稿.xlsx",
+                page: "Sheet · UE 测算",
+                excerpt:
+                  "2024 H2 单笔订单平均成本拆解：底层 API 38% / 服务器 11% / 人工运营 14% / 销售分摊 17% / 毛利 20%。",
+                highlight: ["38%", "毛利 20%"],
+              },
+              {
+                document: "BP_2026Q2.pptx",
+                page: 17,
+                excerpt:
+                  "公司假设 2026 年底层模型推理价格下降 40%，从而推动综合毛利率提升至 55%。",
+                highlight: ["下降 40%", "55%"],
+              },
+            ],
+            actionAdvice: [
+              "要求公司提供推理成本下降假设的量化依据（合同 / 询价单 / 模型路由方案）",
+              "条款上设置「24 个月内综合毛利不低于 35%」的业绩补偿触发线",
+              "建议引入 AI Gateway 路由方案，降低对单一模型的成本敞口",
+            ],
+            category: "财务",
+          },
+          {
+            id: "c-3",
+            priority: "P2",
+            title: "前五大客户占比 41%，存在单点依赖",
+            coreLogic:
+              "前五大客户合计贡献营收占比 41.2%[^5]，其中 TOP1 客户已签 2025 年延续协议但金额下降 39%[^5]，单一客户敞口对收入稳定性形成显性威胁。",
+            evidence: [
+              {
+                document: "投决议案-V3.pdf",
+                page: 14,
+                excerpt:
+                  "前五大客户合计贡献营收占比 41.2%，其中 TOP1 客户已签 2025 年延续协议，但金额下降 39%。",
+                highlight: ["41.2%", "下降 39%"],
+              },
+            ],
+            actionAdvice: [
+              "要求新增「单一客户占比连续两期 > 30% 时，补充信用增信」的反稀释条款",
+              "持续跟踪 2026 H1 新签客户多元化进展",
+            ],
+            category: "财务",
+          },
+          {
+            id: "c-4",
+            priority: "P2",
+            title: "团队基因匹配度待验证（销售型团队做底层 Agent 平台）",
+            coreLogic:
+              "核心三人创始团队中 2 位出身销售岗，CTO 履历[^6] 仅以「资深架构师」概称、未披露具体项目与时间区间，外部数据源中也未找到对应的 ML / Infra 背书。",
+            evidence: [
+              {
+                document: "BP_2026Q2.pptx",
+                page: 6,
+                excerpt:
+                  "CTO 张某：「曾任职某 AI 独角兽资深架构师」，但未披露具体项目与时间区间。",
+                highlight: ["资深架构师"],
+              },
+            ],
+            actionAdvice: [
+              "建议增设 CTO 履历背调专项条款，由专业第三方完成",
+              "在投后管理协议中预留关键岗位变更知会权",
+            ],
+            category: "团队",
+          },
+        ],
+        citations: [
+          {
+            document: "投决议案-V3.pdf",
+            page: 12,
+            paragraph: "五、估值与定价 / (2) 退出推算",
+            excerpt:
+              "项目方按 PS 6× × NTM 营收 2.1 亿计算投前估值 12.6 亿；隐含要求 NTM 增速 +85%。",
+            highlight: ["PS 6×", "+85%"],
+          },
+          {
+            document: "FDD 底稿.xlsx",
+            page: "附表 3-人员",
+            paragraph: "人效与产能分析",
+            excerpt:
+              "在职研发 38 人，2024 全年人效 47.1 万元，远低于行业基准（约 75–82 万元）。",
+            highlight: ["47.1 万元", "75–82 万元"],
+          },
+          {
+            document: "FDD 底稿.xlsx",
+            page: "Sheet · UE 测算",
+            paragraph: "单笔订单成本结构",
+            excerpt:
+              "2024 H2 单笔订单平均成本拆解：底层 API 38% / 服务器 11% / 人工运营 14% / 销售分摊 17% / 毛利 20%。",
+            highlight: ["38%", "毛利 20%"],
+          },
+          {
+            document: "BP_2026Q2.pptx",
+            page: 17,
+            paragraph: "成本下降假设",
+            excerpt:
+              "公司假设 2026 年底层模型推理价格下降 40%，从而推动综合毛利率提升至 55%。",
+            highlight: ["下降 40%", "55%"],
+          },
+          {
+            document: "投决议案-V3.pdf",
+            page: 14,
+            paragraph: "四、客户集中度",
+            excerpt:
+              "前五大客户合计贡献营收占比 41.2%，其中 TOP1 客户已签 2025 年延续协议，但金额下降 39%。",
+            highlight: ["41.2%", "下降 39%"],
+          },
+          {
+            document: "BP_2026Q2.pptx",
+            page: 6,
+            paragraph: "团队介绍 / CTO 履历",
+            excerpt:
+              "CTO 张某：「曾任职某 AI 独角兽资深架构师」，但未披露具体项目与时间区间。",
+            highlight: ["资深架构师"],
+          },
+        ],
+      },
+    ],
+  },
+  {
+    id: "m-user-3",
+    role: "user",
+    text: "估值合理性怎么样？请给出区间，不需要推荐数。",
+    mode: "auto",
+    createdAt: "2026-05-12T09:48:01+08:00",
+  },
+  {
+    id: "m-assistant-3",
+    role: "assistant",
+    createdAt: "2026-05-12T09:48:55+08:00",
+    blocks: [
+      {
+        kind: "clarification",
+        title: "缺失关键参数：预计未来稀释比例",
+        reason:
+          "VC 倒算法（IRR 反向测算）必须使用，当前材料中未找到「退出前本轮股权稀释比例」披露，触发阻断式反问。",
+        fields: [
+          {
+            key: "dilution",
+            label: "预计未来稀释比例（%）",
+            hint: "若 BP 表述「稀释到 X%」（留存率），系统会自动换算为 100% − X%",
+            type: "number",
+            required: true,
+          },
+          {
+            key: "expected-irr",
+            label: "目标 IRR（%）",
+            hint: "默认 15%（基准）；激进档位可上调至 20–25%",
+            type: "number",
+            required: true,
+          },
+          {
+            key: "exit-year",
+            label: "预期退出年限（年）",
+            hint: "默认 5 年",
+            type: "number",
+          },
+        ],
+      },
+      {
+        kind: "valuation",
+        title: "估值平行测算（已使用 VC 倒算 + PS 对比 + PTA 三种方法）",
+        summary:
+          "Agent 不提供单一推荐值。下述每种方法独立测算，所用 NTM 营收 2.1 亿元来源于公司预测口径[^1]，并将关键假设客观列出，由用户判断合理性。",
+        methods: [
+          {
+            method: "VC 倒算法（IRR 15%, N=5, 稀释 30% 兜底）",
+            range: "9.4 – 11.2 亿元",
+            assumption:
+              "预期退出 PS 4×[^4]，5 年后所需营收约 4.7 亿，对应 5 年 CAGR ≈ 27%",
+            applicability: "强匹配（早期成长项目必使用）",
+          },
+          {
+            method: "对比公司法 · PS",
+            range: "10.5 – 12.1 亿元",
+            assumption:
+              "对标 3 家二级市场 SaaS / Agent 应用平均 PS = 5.2×[^2]，NTM 营收 2.1 亿[^1]",
+            applicability: "中等匹配（公司未盈利、营收增速 > 30%）",
+          },
+          {
+            method: "交易案例法（PTA）",
+            range: "10.0 – 11.5 亿元",
+            assumption:
+              "近 12 个月 3 起可比 Pre-A 案例加权平均 PS = 5.0×[^3]，已剔除高估异常值",
+            applicability: "全局并行验证（强制使用）",
+          },
+        ],
+        conclusion:
+          "综合估值区间：9.4 – 12.1 亿元。议案投前 12.6 亿[^5] 位于上限以上 4.1%，处于「需关注假设差异」区间（PRD 偏差率定义 15%–30% 之间）。建议复核 NTM 营收预测与 PS 对标公司选取合理性。",
+        citations: [
+          {
+            document: "BP_2026Q2.pptx",
+            page: 9,
+            paragraph: "财务预测 / NTM 营收口径",
+            excerpt:
+              "公司预测 NTM（未来 12 个月）实现营业收入 2.1 亿元，对应同比增速 +15.4%。",
+            highlight: ["2.1 亿元", "+15.4%"],
+          },
+          {
+            document: "对比公司清单.xlsx",
+            page: "Sheet · SaaS-Agent",
+            paragraph: "可比公司 PS 中位数",
+            excerpt:
+              "选取 3 家二级 SaaS / Agent 应用厂商（A、B、C），近 30 日 NTM PS 中位数 5.2×，均值 5.4×。",
+            highlight: ["5.2×", "5.4×"],
+          },
+          {
+            document: "PTA 案例集.xlsx",
+            page: "Sheet · Pre-A 近 12M",
+            paragraph: "加权平均 PS",
+            excerpt:
+              "纳入样本 3 起，分别为 4.6× / 5.1× / 5.3×，按交易金额加权后 PS = 5.0×。",
+            highlight: ["5.0×"],
+          },
+          {
+            document: "退出参考案例.pdf",
+            page: 4,
+            paragraph: "二级市场退出 PS",
+            excerpt:
+              "近 24 个月境内 SaaS / Agent 应用厂商 IPO 退出 PS 中枢为 4×，区间 3.2× – 5.1×。",
+            highlight: ["PS 4×", "3.2× – 5.1×"],
+          },
+          {
+            document: "投决议案-V3.pdf",
+            page: 8,
+            paragraph: "五、估值与定价 / (1) 投前估值",
+            excerpt: "本轮拟按投前估值人民币 12.6 亿元定价（折合 PS 6×）。",
+            highlight: ["12.6 亿元", "PS 6×"],
+          },
+        ],
+      },
+    ],
+  },
+];
