@@ -10,12 +10,13 @@ import { Sidebar } from "@/src/components/layout/Sidebar";
 import { WorkspaceHeader } from "@/src/components/layout/WorkspaceHeader";
 import { ProjectWizard } from "@/src/components/project/ProjectWizard";
 import { TooltipProvider } from "@/src/components/ui/tooltip";
-import { mockMessages } from "@/src/data/mock-conversations";
+import { mockConversations } from "@/src/data/mock-conversations";
 import { mockProjects } from "@/src/data/mock-projects";
-import { cn, uid } from "@/src/lib/utils";
+import { cn, isListedConversation, uid } from "@/src/lib/utils";
 import type {
   AssistantBlock,
   ChatMessage,
+  Conversation,
   FileKind,
   KnowledgeFile,
   Project,
@@ -23,7 +24,12 @@ import type {
   WorkMode,
 } from "@/src/types";
 
-type ViewMode = "workspace" | "new-project";
+/**
+ * 视图：
+ *  - conversation：对话详情页（默认）
+ *  - new-project：新建项目向导
+ */
+type ViewMode = "conversation" | "new-project";
 
 const SETTINGS_OPEN_KEY = "iw.settingsOpen";
 
@@ -31,19 +37,26 @@ function App() {
   const [authed, setAuthed] = useState(false);
 
   const [projects, setProjects] = useState<Project[]>(mockProjects);
-  const [currentId, setCurrentId] = useState<string>(mockProjects[0].id);
-  const [view, setView] = useState<ViewMode>("workspace");
+  const [conversations, setConversations] = useState<Conversation[]>(mockConversations);
 
-  // 每个项目独立的会话
-  const [conversations, setConversations] = useState<Record<string, ChatMessage[]>>({
-    [mockProjects[0].id]: mockMessages,
-  });
+  // 进入应用时默认选中第一个项目下最近的一条对话
+  const initialProjectId = mockProjects[0]?.id ?? "";
+  const initialConversationId = useMemo(() => {
+    const sorted = mockConversations
+      .filter((c) => c.projectId === initialProjectId && isListedConversation(c))
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    return sorted[0]?.id ?? null;
+  }, [initialProjectId]);
 
-  const [mode, setMode] = useState<WorkMode>("auto");
+  const [currentProjectId, setCurrentProjectId] = useState<string>(initialProjectId);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(
+    initialConversationId
+  );
+  const [view, setView] = useState<ViewMode>("conversation");
+
   const [generating, setGenerating] = useState(false);
   const [viewerAnchor, setViewerAnchor] = useState<SourceAnchor | null>(null);
   const [settingsTab, setSettingsTab] = useState<SettingsTab>("preferences");
-  const [settingsDirty, setSettingsDirty] = useState(false);
 
   // 右侧项目设置面板的折叠状态（持久化到 localStorage）
   const [settingsOpen, setSettingsOpen] = useState<boolean>(() => {
@@ -62,22 +75,148 @@ function App() {
   const [openReport, setOpenReport] = useState<AssistantBlock | null>(null);
 
   const currentProject = useMemo(
-    () => projects.find((p) => p.id === currentId) ?? projects[0],
-    [projects, currentId]
+    () => projects.find((p) => p.id === currentProjectId) ?? projects[0],
+    [projects, currentProjectId]
   );
 
-  const messages = conversations[currentId] ?? [];
+  const currentConversation = useMemo(
+    () => conversations.find((c) => c.id === currentConversationId) ?? null,
+    [conversations, currentConversationId]
+  );
 
+  const messages = currentConversation?.messages ?? [];
+
+  // —— 项目操作 ——
   const updateProject = (patch: Partial<Project>) => {
     setProjects((prev) =>
-      prev.map((p) => (p.id === currentId ? { ...p, ...patch, updatedAt: new Date().toISOString() } : p))
+      prev.map((p) =>
+        p.id === currentProjectId
+          ? { ...p, ...patch, updatedAt: new Date().toISOString() }
+          : p
+      )
     );
   };
 
-  /** 智能路由：识别用户意图属于 fact-check / challenge / 无法判断 */
+  const renameProject = (id: string, newName: string) => {
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, name: newName, updatedAt: new Date().toISOString() } : p
+      )
+    );
+  };
+
+  const deleteProject = (id: string) => {
+    setProjects((prev) => prev.filter((p) => p.id !== id));
+    setConversations((prev) => prev.filter((c) => c.projectId !== id));
+    if (id === currentProjectId) {
+      const remaining = projects.filter((p) => p.id !== id);
+      if (remaining.length > 0) {
+        const nextProjectId = remaining[0].id;
+        const nextProjectConvs = conversations
+          .filter((c) => c.projectId === nextProjectId && isListedConversation(c))
+          .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+        setCurrentProjectId(nextProjectId);
+        if (nextProjectConvs[0]) {
+          setCurrentConversationId(nextProjectConvs[0].id);
+          setView("conversation");
+        } else {
+          createEmptyConversationFor(nextProjectId);
+        }
+      } else {
+        setCurrentConversationId(null);
+        setView("new-project");
+      }
+    }
+  };
+
+  // —— 子对话操作 ——
+  const updateConversation = (id: string, patch: Partial<Conversation>) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c
+      )
+    );
+  };
+
+  const renameConversation = (id: string, newTitle: string) => {
+    updateConversation(id, { title: newTitle });
+  };
+
+  const appendMessage = (conversationId: string, msg: ChatMessage) => {
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId
+          ? {
+              ...c,
+              messages: [...c.messages, msg],
+              updatedAt: new Date().toISOString(),
+            }
+          : c
+      )
+    );
+  };
+
+  /** 为指定项目创建一个空的临时对话，并切到对话视图 */
+  const createEmptyConversationFor = (projectId: string) => {
+    const convId = uid("conv");
+    const newConv: Conversation = {
+      id: convId,
+      projectId,
+      title: "新对话",
+      messages: [],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      isDraft: true,
+    };
+    setConversations((prev) => [newConv, ...prev]);
+    setCurrentConversationId(convId);
+    setCurrentProjectId(projectId);
+    setView("conversation");
+    return convId;
+  };
+
+  /** 打开或复用该项目下的草稿对话 */
+  const openOrCreateDraftFor = (projectId: string) => {
+    const existingDraft = conversations.find(
+      (c) => c.projectId === projectId && c.isDraft
+    );
+    if (existingDraft) {
+      setCurrentProjectId(projectId);
+      setCurrentConversationId(existingDraft.id);
+      setView("conversation");
+      return existingDraft.id;
+    }
+    return createEmptyConversationFor(projectId);
+  };
+
+  /** 点击侧边栏的项目：切到该项目下最新已发布对话，否则打开草稿或新建草稿 */
+  const selectProject = (projectId: string) => {
+    setCurrentProjectId(projectId);
+    setView("conversation");
+    const listed = conversations
+      .filter((c) => c.projectId === projectId && isListedConversation(c))
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+    if (listed[0]) {
+      setCurrentConversationId(listed[0].id);
+      return;
+    }
+    openOrCreateDraftFor(projectId);
+  };
+
+  /** 侧边栏 hover：为项目新建对话（草稿，不出现在子集/最近） */
+  const handleCreateConversation = (projectId: string) => {
+    openOrCreateDraftFor(projectId);
+  };
+
+  // —— Agent 能力识别 ——
   const detectIntent = (text: string): "fact-check" | "challenge" | "ambiguous" => {
-    const factSignals = ["事实", "核对", "校验", "验证", "数字", "数据", "对比", "差异", "出入", "一致", "口径", "口径一致", "勾稽"];
-    const challengeSignals = ["质询", "挑战", "风险", "逻辑", "矛盾", "漏洞", "假设", "存疑", "疑点", "压力", "拷问"];
+    const factSignals = [
+      "事实", "核对", "校验", "验证", "数字", "数据", "对比", "差异", "出入",
+      "一致", "口径", "口径一致", "勾稽",
+    ];
+    const challengeSignals = [
+      "质询", "挑战", "风险", "逻辑", "矛盾", "漏洞", "假设", "存疑", "疑点", "压力", "拷问",
+    ];
     const hasFact = factSignals.some((k) => text.includes(k));
     const hasChallenge = challengeSignals.some((k) => text.includes(k));
     if (hasFact && !hasChallenge) return "fact-check";
@@ -104,7 +243,9 @@ function App() {
     ],
   });
 
-  const handleSend = (
+  /** 在某个 conversation 中发送 user 消息 + 触发 Agent 回复 */
+  const sendInConversation = (
+    conversationId: string,
     text: string,
     attachments: Array<{ name: string; size: string; kind: FileKind }>
   ) => {
@@ -113,16 +254,22 @@ function App() {
       role: "user",
       text,
       attachments: attachments.length > 0 ? attachments : undefined,
-      mode,
       createdAt: new Date().toISOString(),
     };
-    setConversations((prev) => ({
-      ...prev,
-      [currentId]: [...(prev[currentId] ?? []), userMsg],
-    }));
+    appendMessage(conversationId, userMsg);
 
-    // 智能路由模式下，若意图模糊（同时命中或都未命中），返回 mode-pick 让用户决定
-    if (mode === "auto" && text.trim().length > 0) {
+    // 首条用户消息：更新标题并退出草稿态（侧边栏子集/最近才会展示）
+    setConversations((prev) =>
+      prev.map((c) => {
+        if (c.id !== conversationId) return c;
+        if (!c.isDraft && c.title !== "新对话") return c;
+        const nextTitle = text.trim().slice(0, 24) || c.title;
+        return { ...c, title: nextTitle, isDraft: false };
+      })
+    );
+
+    // Agent 自动识别意图；ambiguous → mode-pick；明确意图 → 直接处理
+    if (text.trim().length > 0) {
       const intent = detectIntent(text);
       if (intent === "ambiguous") {
         setGenerating(true);
@@ -134,9 +281,9 @@ function App() {
             blocks: [
               {
                 kind: "mode-pick",
-                title: "这条问题适合哪种 Agent 处理？",
+                title: "Agent 暂时无法判断该问题适合哪类能力",
                 reason:
-                  "智能路由未能在「事实交叉验证」和「挑战质询」之间确定唯一意图。请选择一个模式以继续，Agent 将按选择重新分发任务。",
+                  "您的问题表述较宽泛，Agent 智能路由未能在「事实交叉验证」与「挑战质询」之间做出可靠判断。请手动选择一项继续。",
                 originalQuery: text,
                 options: [
                   {
@@ -154,10 +301,7 @@ function App() {
               },
             ],
           };
-          setConversations((prev) => ({
-            ...prev,
-            [currentId]: [...(prev[currentId] ?? []), pickMsg],
-          }));
+          appendMessage(conversationId, pickMsg);
           setGenerating(false);
         }, 700);
         return;
@@ -166,43 +310,80 @@ function App() {
 
     setGenerating(true);
     setTimeout(() => {
-      setConversations((prev) => ({
-        ...prev,
-        [currentId]: [...(prev[currentId] ?? []), buildAssistantTextReply()],
-      }));
+      appendMessage(conversationId, buildAssistantTextReply());
       setGenerating(false);
     }, 1200);
   };
 
-  /** 用户在 mode-pick 卡片上挑了模式 → 切换并以该模式重发原问题 */
+  /** 对话详情页：底部发送框 */
+  const handleSend = (
+    text: string,
+    attachments: Array<{ name: string; size: string; kind: FileKind }>
+  ) => {
+    if (!currentConversationId) return;
+    sendInConversation(currentConversationId, text, attachments);
+  };
+
+  /** mode-pick 卡片选择后：以指定能力继续处理 */
   const handleModePick = (
     _msgId: string,
-    pickedMode: Extract<WorkMode, "fact-check" | "challenge">,
+    _pickedMode: Extract<WorkMode, "fact-check" | "challenge">,
     originalQuery: string
   ) => {
-    setMode(pickedMode);
+    if (!currentConversationId) return;
     const userMsg: ChatMessage = {
       id: uid("m"),
       role: "user",
       text: originalQuery,
-      mode: pickedMode,
       createdAt: new Date().toISOString(),
     };
-    setConversations((prev) => ({
-      ...prev,
-      [currentId]: [...(prev[currentId] ?? []), userMsg],
-    }));
+    appendMessage(currentConversationId, userMsg);
     setGenerating(true);
     setTimeout(() => {
-      setConversations((prev) => ({
-        ...prev,
-        [currentId]: [...(prev[currentId] ?? []), buildAssistantTextReply()],
-      }));
+      appendMessage(currentConversationId, buildAssistantTextReply());
       setGenerating(false);
     }, 1200);
   };
 
-  const handleClarificationSubmit = (msgId: string, values: Record<string, string>) => {
+  const handleClarificationSubmit = (
+    _msgId: string,
+    values: Record<string, string>,
+    followUp?: AssistantBlock[]
+  ) => {
+    if (!currentConversationId) return;
+
+    // 有 followUp（如估值平行测算报告）：模拟分析过程后追加 Agent 报告
+    if (followUp && followUp.length > 0) {
+      const dilution = values["dilution"] || "30";
+      const irr = values["expected-irr"] || "15";
+      const ackMsg: ChatMessage = {
+        id: uid("m"),
+        role: "assistant",
+        createdAt: new Date().toISOString(),
+        blocks: [
+          {
+            kind: "text",
+            text: `已收到补充数据（稀释比例 ${dilution}% · IRR ${irr}%），正在按 VC 倒算 + PS 对比 + PTA 三种方法并行测算…`,
+          },
+        ],
+      };
+      appendMessage(currentConversationId, ackMsg);
+      setGenerating(true);
+      const targetId = currentConversationId;
+      setTimeout(() => {
+        const reportMsg: ChatMessage = {
+          id: uid("m"),
+          role: "assistant",
+          createdAt: new Date().toISOString(),
+          blocks: followUp,
+        };
+        appendMessage(targetId, reportMsg);
+        setGenerating(false);
+      }, 1400);
+      return;
+    }
+
+    // 无 followUp：保留兜底文案
     const dilution = values["dilution"] || "30";
     const irr = values["expected-irr"] || "15";
     const replyMsg: ChatMessage = {
@@ -212,52 +393,88 @@ function App() {
       blocks: [
         {
           kind: "text",
-          text: `已根据补充数据（稀释比例 ${dilution}% · IRR ${irr}%）重新触发估值平行测算，详见上方更新结论。`,
+          text: `已根据补充数据（稀释比例 ${dilution}% · IRR ${irr}%）继续推算，结果详见上方更新结论。`,
         },
       ],
     };
-    setConversations((prev) => ({
-      ...prev,
-      [currentId]: [...(prev[currentId] ?? []), replyMsg],
-    }));
+    appendMessage(currentConversationId, replyMsg);
   };
 
   const handleCreate = (proj: Project) => {
     setProjects((prev) => [proj, ...prev]);
-    setConversations((prev) => ({
-      ...prev,
-      [proj.id]: [
-        {
-          id: uid("m"),
-          role: "system",
-          text:
-            proj.files.length > 0
-              ? `项目「${proj.name}」资料库已开始解析（${proj.files.length} 份文件），完成后将通过邮件通知您。`
-              : `项目「${proj.name}」已创建。请上传投决议案、财务尽调、法律尽调等核心材料，方可发起事实验证 / 挑战质询。`,
-          createdAt: new Date().toISOString(),
-        },
-      ],
-    }));
-    setCurrentId(proj.id);
-    setView("workspace");
-    // 模拟解析完成
+    setCurrentProjectId(proj.id);
+
+    // 创建项目时若有资料则附带一条 system 引导对话；否则进入空对话
     if (proj.files.length > 0) {
+      const convId = uid("conv");
+      const greeting: Conversation = {
+        id: convId,
+        projectId: proj.id,
+        title: "项目入库引导",
+        messages: [
+          {
+            id: uid("m"),
+            role: "system",
+            text: `项目「${proj.name}」资料库已开始解析（${proj.files.length} 份文件），完成后将通过邮件通知您。`,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setConversations((prev) => [greeting, ...prev]);
+      setCurrentConversationId(convId);
+      setView("conversation");
       setTimeout(() => {
-        setProjects((prev) => prev.map((p) => (p.id === proj.id ? { ...p, status: "parsed" } : p)));
+        setProjects((prev) =>
+          prev.map((p) => (p.id === proj.id ? { ...p, status: "parsed" } : p))
+        );
       }, 2200);
+    } else {
+      createEmptyConversationFor(proj.id);
     }
   };
 
   const handleRecalculate = () => {
+    // 模拟「分析中」可视化：把项目状态切到 parsing，约 6 秒后恢复为 parsed
+    const targetProjectId = currentProjectId;
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === targetProjectId
+          ? { ...p, status: "parsing", updatedAt: new Date().toISOString() }
+          : p
+      )
+    );
+    setTimeout(() => {
+      setProjects((prev) =>
+        prev.map((p) =>
+          p.id === targetProjectId
+            ? { ...p, status: "parsed", updatedAt: new Date().toISOString() }
+            : p
+        )
+      );
+    }, 6000);
+
+    if (!currentConversationId) return;
     const sysMsg: ChatMessage = {
       id: uid("m"),
       role: "system",
       text: `分析评估已启动（${currentProject.riskTolerance} · ${
         currentProject.stage === "early-growth" ? "早期/成长期" : "中后期/Pre-IPO"
-      }），将基于最新偏好与知识库重新生成事实验证与质询清单。`,
+      }），将基于最新偏好与知识库重新生成事实验证与质询清单。期间您可以继续提问，结果就绪后会自动归档。`,
       createdAt: new Date().toISOString(),
     };
-    setConversations((prev) => ({ ...prev, [currentId]: [sysMsg] }));
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === currentConversationId
+          ? {
+              ...c,
+              messages: [...c.messages, sysMsg],
+              updatedAt: new Date().toISOString(),
+            }
+          : c
+      )
+    );
   };
 
   const handleUpdateFiles = (files: KnowledgeFile[]) => {
@@ -275,29 +492,41 @@ function App() {
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex h-screen w-screen overflow-hidden bg-[hsl(var(--background))] text-[hsl(var(--foreground))]">
-        {/* 左侧栏 */}
+        {/* 左侧栏：项目列表 + 二级历史对话 + 最近对话 */}
         <Sidebar
           projects={projects}
-          currentProjectId={currentId}
-          onSelectProject={(id) => {
-            setCurrentId(id);
-            setView("workspace");
+          conversations={conversations}
+          currentProjectId={currentProjectId}
+          currentConversationId={currentConversationId}
+          onSelectProject={selectProject}
+          onOpenConversation={(id) => {
+            const conv = conversations.find((c) => c.id === id);
+            if (conv) {
+              setCurrentProjectId(conv.projectId);
+              setCurrentConversationId(id);
+              setView("conversation");
+            }
           }}
+          onCreateConversation={handleCreateConversation}
           onNewProject={() => setView("new-project")}
-          onOpenManager={() => {
-            setView("workspace");
-            setSettingsTab("knowledge");
-          }}
+          onRenameProject={renameProject}
+          onDeleteProject={deleteProject}
         />
 
         {/* 中间工作区 */}
         <main className="relative flex min-w-0 flex-1 flex-col">
-          {view === "workspace" && (
+          {view === "conversation" && currentProject && (
             <>
               <WorkspaceHeader
                 project={currentProject}
+                conversation={currentConversation}
                 settingsOpen={settingsOpen}
                 onToggleSettings={() => setSettingsOpen((v) => !v)}
+                onRenameConversation={(newTitle) => {
+                  if (currentConversationId) {
+                    renameConversation(currentConversationId, newTitle);
+                  }
+                }}
               />
               <MessageList
                 messages={messages}
@@ -307,31 +536,32 @@ function App() {
                 onExport={handleExport}
                 onOpenReport={(b) => setOpenReport(b)}
                 onModePick={handleModePick}
-                awaitingSetup={currentProject.status === "draft"}
+                hasKnowledge={currentProject.files.length > 0}
               />
               <ChatComposer
-                mode={mode}
-                onChangeMode={setMode}
-                webSearch={currentProject.webSearch}
-                onToggleWebSearch={(v) => updateProject({ webSearch: v })}
                 onSend={handleSend}
                 generating={generating}
                 onStop={() => setGenerating(false)}
-                settingsPending={settingsDirty}
-                awaitingSetup={currentProject.status === "draft"}
               />
             </>
           )}
 
           {view === "new-project" && (
             <div className="flex-1 overflow-y-auto thin-scroll px-6 py-10">
-              <ProjectWizard onCreate={handleCreate} onCancel={() => setView("workspace")} />
+              <ProjectWizard
+                onCreate={handleCreate}
+                onCancel={() => {
+                  // 取消时回到当前项目下的对话（或现有第一条对话）
+                  if (currentConversationId) setView("conversation");
+                  else if (projects[0]) selectProject(projects[0].id);
+                }}
+              />
             </div>
           )}
         </main>
 
-        {/* 右侧项目设置面板：偏好 + 知识库（仅工作区显示，可折叠） */}
-        {view === "workspace" && (
+        {/* 右侧项目设置面板：仅对话详情页显示 */}
+        {view === "conversation" && currentProject && (
           <div
             className={cn(
               "shrink-0 overflow-hidden transition-[width] duration-300 ease-out",
@@ -346,7 +576,6 @@ function App() {
               onUpdate={updateProject}
               onUpdateFiles={handleUpdateFiles}
               onRecalculate={handleRecalculate}
-              onDirtyChange={setSettingsDirty}
             />
           </div>
         )}

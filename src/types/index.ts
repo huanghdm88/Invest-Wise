@@ -36,10 +36,21 @@ export interface Project {
   stage: InvestmentStage;
   riskTolerance: RiskTolerance;
   customInstruction: string;
-  webSearch: boolean;
   status: ProjectStatus;
   updatedAt: string;
   files: KnowledgeFile[];
+}
+
+/** 项目下的子对话（每个项目可包含多个独立的子对话） */
+export interface Conversation {
+  id: string;
+  projectId: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+  /** 草稿态：未发送首条消息前不在侧边栏项目子集与「最近」中展示 */
+  isDraft?: boolean;
 }
 
 /** 溯源锚点：一定要带原文页码 */
@@ -61,6 +72,17 @@ export interface FactCompare {
   /** 差异百分比，正数=高估 */
   delta?: string;
   level: Priority;
+  /** 偏差详情：仅在 delta ≠ 0 时填充，用于支撑卡片展开"为什么差"的说明 */
+  deviationDetail?: {
+    /** 差异成因，例如「合并口径口径未做内部抵销」 */
+    explanation: string;
+    /** 业务影响，例如「现金流真实值低于披露，影响估值与对赌设定」 */
+    impact: string;
+    /** 处置建议（条款 / 复核动作 / 数据补充） */
+    recommendation?: string;
+    /** 触发偏差的关键证据锚点 */
+    evidence?: SourceAnchor[];
+  };
 }
 
 /** 挑战质询：单条 */
@@ -103,6 +125,8 @@ export type AssistantBlock =
       title: string;
       reason: string;
       fields: ClarificationField[];
+      /** 用户提交后，由 Agent 自动追加的后续内容（如估值报告）。提交前不展示。 */
+      followUp?: AssistantBlock[];
     }
   | {
       kind: "mode-pick";

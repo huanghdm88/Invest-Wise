@@ -9,7 +9,6 @@ export const mockProjects: Project[] = [
     riskTolerance: "R2",
     customInstruction:
       "本次重点审查其 AI Agent 在企业 IT 运维场景的真实订单转化能力，以及底层模型 API 调用成本占比。",
-    webSearch: true,
     status: "parsed",
     updatedAt: "2026-05-12T09:18:00+08:00",
     files: [
@@ -68,7 +67,6 @@ export const mockProjects: Project[] = [
     riskTolerance: "R1",
     customInstruction:
       "国资基金，重点关注流片经济学、良率爬坡数据、对受限实体清单 EDA / 代工厂的依赖度。",
-    webSearch: true,
     status: "parsing",
     updatedAt: "2026-05-12T16:42:00+08:00",
     files: [
@@ -99,7 +97,6 @@ export const mockProjects: Project[] = [
     stage: "early-growth",
     riskTolerance: "R3",
     customInstruction: "",
-    webSearch: false,
     status: "draft",
     updatedAt: "2026-05-10T11:20:00+08:00",
     files: [],

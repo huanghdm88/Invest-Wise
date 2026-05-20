@@ -1,23 +1,30 @@
-import type { ChatMessage } from "@/src/types";
+import type { AssistantBlock, ChatMessage, Conversation } from "@/src/types";
 
-/** 极光智算项目的演示会话 - 涵盖反问 / 事实验证 / 挑战质询 / 估值四类卡片 */
-export const mockMessages: ChatMessage[] = [
+/**
+ * 演示子对话 - 围绕极光智算项目拆解为三条独立子对话：
+ *  - conv-aurora-fact：事实交叉验证
+ *  - conv-aurora-route：智能路由 → 待确认
+ *  - conv-aurora-challenge：挑战质询清单
+ *  - conv-aurora-valuation：估值平行测算
+ */
+
+const factVerificationMessages: ChatMessage[] = [
   {
-    id: "m-greeting",
+    id: "m-fact-greeting",
     role: "system",
     text:
       "项目「极光智算 Pre-A 轮」资料库解析完成（5 份文件已入库），可发起事实验证或挑战质询。建议先核对议案与财务底稿的数据一致性。",
     createdAt: "2026-05-12T09:20:00+08:00",
   },
   {
-    id: "m-user-1",
+    id: "m-fact-user",
     role: "user",
     text: "对议案宣称的营收与经营性现金流做事实交叉验证。",
     mode: "fact-check",
     createdAt: "2026-05-12T09:22:14+08:00",
   },
   {
-    id: "m-assistant-1",
+    id: "m-fact-assistant",
     role: "assistant",
     createdAt: "2026-05-12T09:22:48+08:00",
     blocks: [
@@ -34,6 +41,13 @@ export const mockMessages: ChatMessage[] = [
             reality: { source: "财务审计报告 · P12[^2]", value: "1.79 亿元" },
             delta: "+1.6%",
             level: "P3",
+            deviationDetail: {
+              explanation:
+                "议案使用 1.82 亿元（含税口径），而审计报告披露的为不含税营业总收入 17,887 万元（1.79 亿元）；差异 1.6% 处于税金及附加合理区间，未发现实质性失真。",
+              impact:
+                "对估值与 PS 计算影响极小（≤ 0.2×），属 P3 噪音级。",
+              recommendation: "保留原口径，在尽调备忘中加注「含税 / 不含税」披露口径说明即可。",
+            },
           },
           {
             label: "2024 经营性现金流净额",
@@ -41,6 +55,24 @@ export const mockMessages: ChatMessage[] = [
             reality: { source: "FDD 底稿 · 附注 4[^4]", value: "+ 2,415 万元" },
             delta: "+15.0%",
             level: "P1",
+            deviationDetail: {
+              explanation:
+                "议案披露的 2,840 万元来源于合并报表口径；FDD 底稿单体加总结果为 2,415 万元（母公司 1,902 + 子 A 396 + 子 B 117），425 万元差额未在附注中给出调节项说明。疑似将「关联方代付费用」回冲计入经营活动现金流。",
+              impact:
+                "现金流真实质量被高估 15%，直接影响 VC 倒算法估值上限，应触发 P1 级条款重构（业绩补偿 / 现金回购对赌）。",
+              recommendation:
+                "要求公司在 1 周内提供合并 → 单体的现金流调节表，并就 425 万差异逐项说明；如未能说明，建议将估值上限下修 8% – 12%。",
+              evidence: [
+                {
+                  document: "FDD 底稿.xlsx",
+                  page: "附注 4",
+                  paragraph: "经营活动产生的现金流量净额（单体加总）",
+                  excerpt:
+                    "母公司 1,902 万 + 全资子公司 A 396 万 + 全资子公司 B 117 万 = 2,415 万元；与合并报表披露的 2,840 万存在 425 万差异，未在附注中说明调节项。",
+                  highlight: ["2,415 万元", "425 万差异"],
+                },
+              ],
+            },
           },
           {
             label: "投后估值（B 轮基础上）",
@@ -119,23 +151,25 @@ export const mockMessages: ChatMessage[] = [
       },
     ],
   },
+];
+
+const routeAmbiguousMessages: ChatMessage[] = [
   {
-    id: "m-user-route",
+    id: "m-route-user",
     role: "user",
     text: "这个项目整体怎么样？帮我看看。",
-    mode: "auto",
     createdAt: "2026-05-12T09:28:02+08:00",
   },
   {
-    id: "m-assistant-route",
+    id: "m-route-assistant",
     role: "assistant",
     createdAt: "2026-05-12T09:28:35+08:00",
     blocks: [
       {
         kind: "mode-pick",
-        title: "请先确认要执行的任务类型",
+        title: "Agent 暂时无法判断该问题适合哪类能力",
         reason:
-          "您的问题表述较宽泛，智能路由无法在「事实交叉验证」与「挑战质询」之间做出可靠判断。请选择一种模式后，Agent 将基于当前知识库继续处理。",
+          "您的问题表述较宽泛，Agent 智能路由无法在「事实交叉验证」与「挑战质询」之间做出可靠判断，请手动选择一项继续，后续将延续您的选择。",
         originalQuery: "这个项目整体怎么样？帮我看看。",
         options: [
           {
@@ -152,15 +186,18 @@ export const mockMessages: ChatMessage[] = [
       },
     ],
   },
+];
+
+const challengeMessages: ChatMessage[] = [
   {
-    id: "m-user-2",
+    id: "m-challenge-user",
     role: "user",
     text: "请输出该项目的核心投资逻辑挑战质询清单。",
     mode: "challenge",
     createdAt: "2026-05-12T09:31:02+08:00",
   },
   {
-    id: "m-assistant-2",
+    id: "m-challenge-assistant",
     role: "assistant",
     createdAt: "2026-05-12T09:31:47+08:00",
     blocks: [
@@ -324,15 +361,91 @@ export const mockMessages: ChatMessage[] = [
       },
     ],
   },
+];
+
+/** 估值平行测算报告块 —— 仅在用户补全 clarification 后才追加到对话流中 */
+const valuationFollowUpBlock: AssistantBlock = {
+  kind: "valuation",
+  title: "估值平行测算（已使用 VC 倒算 + PS 对比 + PTA 三种方法）",
+  summary:
+    "Agent 不提供单一推荐值。下述每种方法独立测算，所用 NTM 营收 2.1 亿元来源于公司预测口径[^1]，并将关键假设客观列出，由用户判断合理性。",
+  methods: [
+    {
+      method: "VC 倒算法（IRR 15%, N=5, 稀释 30% 兜底）",
+      range: "9.4 – 11.2 亿元",
+      assumption:
+        "预期退出 PS 4×[^4]，5 年后所需营收约 4.7 亿，对应 5 年 CAGR ≈ 27%",
+      applicability: "强匹配（早期成长项目必使用）",
+    },
+    {
+      method: "对比公司法 · PS",
+      range: "10.5 – 12.1 亿元",
+      assumption:
+        "对标 3 家二级市场 SaaS / Agent 应用平均 PS = 5.2×[^2]，NTM 营收 2.1 亿[^1]",
+      applicability: "中等匹配（公司未盈利、营收增速 > 30%）",
+    },
+    {
+      method: "交易案例法（PTA）",
+      range: "10.0 – 11.5 亿元",
+      assumption:
+        "近 12 个月 3 起可比 Pre-A 案例加权平均 PS = 5.0×[^3]，已剔除高估异常值",
+      applicability: "全局并行验证（强制使用）",
+    },
+  ],
+  conclusion:
+    "综合估值区间：9.4 – 12.1 亿元。议案投前 12.6 亿[^5] 位于上限以上 4.1%，处于「需关注假设差异」区间（PRD 偏差率定义 15%–30% 之间）。建议复核 NTM 营收预测与 PS 对标公司选取合理性。",
+  citations: [
+    {
+      document: "BP_2026Q2.pptx",
+      page: 9,
+      paragraph: "财务预测 / NTM 营收口径",
+      excerpt:
+        "公司预测 NTM（未来 12 个月）实现营业收入 2.1 亿元，对应同比增速 +15.4%。",
+      highlight: ["2.1 亿元", "+15.4%"],
+    },
+    {
+      document: "对比公司清单.xlsx",
+      page: "Sheet · SaaS-Agent",
+      paragraph: "可比公司 PS 中位数",
+      excerpt:
+        "选取 3 家二级 SaaS / Agent 应用厂商（A、B、C），近 30 日 NTM PS 中位数 5.2×，均值 5.4×。",
+      highlight: ["5.2×", "5.4×"],
+    },
+    {
+      document: "PTA 案例集.xlsx",
+      page: "Sheet · Pre-A 近 12M",
+      paragraph: "加权平均 PS",
+      excerpt:
+        "纳入样本 3 起，分别为 4.6× / 5.1× / 5.3×，按交易金额加权后 PS = 5.0×。",
+      highlight: ["5.0×"],
+    },
+    {
+      document: "退出参考案例.pdf",
+      page: 4,
+      paragraph: "二级市场退出 PS",
+      excerpt:
+        "近 24 个月境内 SaaS / Agent 应用厂商 IPO 退出 PS 中枢为 4×，区间 3.2× – 5.1×。",
+      highlight: ["PS 4×", "3.2× – 5.1×"],
+    },
+    {
+      document: "投决议案-V3.pdf",
+      page: 8,
+      paragraph: "五、估值与定价 / (1) 投前估值",
+      excerpt: "本轮拟按投前估值人民币 12.6 亿元定价（折合 PS 6×）。",
+      highlight: ["12.6 亿元", "PS 6×"],
+    },
+  ],
+};
+
+const valuationMessages: ChatMessage[] = [
   {
-    id: "m-user-3",
+    id: "m-val-user",
     role: "user",
     text: "估值合理性怎么样？请给出区间，不需要推荐数。",
-    mode: "auto",
     createdAt: "2026-05-12T09:48:01+08:00",
   },
   {
-    id: "m-assistant-3",
+    id: "m-val-assistant",
     role: "assistant",
     createdAt: "2026-05-12T09:48:55+08:00",
     blocks: [
@@ -363,79 +476,47 @@ export const mockMessages: ChatMessage[] = [
             type: "number",
           },
         ],
-      },
-      {
-        kind: "valuation",
-        title: "估值平行测算（已使用 VC 倒算 + PS 对比 + PTA 三种方法）",
-        summary:
-          "Agent 不提供单一推荐值。下述每种方法独立测算，所用 NTM 营收 2.1 亿元来源于公司预测口径[^1]，并将关键假设客观列出，由用户判断合理性。",
-        methods: [
-          {
-            method: "VC 倒算法（IRR 15%, N=5, 稀释 30% 兜底）",
-            range: "9.4 – 11.2 亿元",
-            assumption:
-              "预期退出 PS 4×[^4]，5 年后所需营收约 4.7 亿，对应 5 年 CAGR ≈ 27%",
-            applicability: "强匹配（早期成长项目必使用）",
-          },
-          {
-            method: "对比公司法 · PS",
-            range: "10.5 – 12.1 亿元",
-            assumption:
-              "对标 3 家二级市场 SaaS / Agent 应用平均 PS = 5.2×[^2]，NTM 营收 2.1 亿[^1]",
-            applicability: "中等匹配（公司未盈利、营收增速 > 30%）",
-          },
-          {
-            method: "交易案例法（PTA）",
-            range: "10.0 – 11.5 亿元",
-            assumption:
-              "近 12 个月 3 起可比 Pre-A 案例加权平均 PS = 5.0×[^3]，已剔除高估异常值",
-            applicability: "全局并行验证（强制使用）",
-          },
-        ],
-        conclusion:
-          "综合估值区间：9.4 – 12.1 亿元。议案投前 12.6 亿[^5] 位于上限以上 4.1%，处于「需关注假设差异」区间（PRD 偏差率定义 15%–30% 之间）。建议复核 NTM 营收预测与 PS 对标公司选取合理性。",
-        citations: [
-          {
-            document: "BP_2026Q2.pptx",
-            page: 9,
-            paragraph: "财务预测 / NTM 营收口径",
-            excerpt:
-              "公司预测 NTM（未来 12 个月）实现营业收入 2.1 亿元，对应同比增速 +15.4%。",
-            highlight: ["2.1 亿元", "+15.4%"],
-          },
-          {
-            document: "对比公司清单.xlsx",
-            page: "Sheet · SaaS-Agent",
-            paragraph: "可比公司 PS 中位数",
-            excerpt:
-              "选取 3 家二级 SaaS / Agent 应用厂商（A、B、C），近 30 日 NTM PS 中位数 5.2×，均值 5.4×。",
-            highlight: ["5.2×", "5.4×"],
-          },
-          {
-            document: "PTA 案例集.xlsx",
-            page: "Sheet · Pre-A 近 12M",
-            paragraph: "加权平均 PS",
-            excerpt:
-              "纳入样本 3 起，分别为 4.6× / 5.1× / 5.3×，按交易金额加权后 PS = 5.0×。",
-            highlight: ["5.0×"],
-          },
-          {
-            document: "退出参考案例.pdf",
-            page: 4,
-            paragraph: "二级市场退出 PS",
-            excerpt:
-              "近 24 个月境内 SaaS / Agent 应用厂商 IPO 退出 PS 中枢为 4×，区间 3.2× – 5.1×。",
-            highlight: ["PS 4×", "3.2× – 5.1×"],
-          },
-          {
-            document: "投决议案-V3.pdf",
-            page: 8,
-            paragraph: "五、估值与定价 / (1) 投前估值",
-            excerpt: "本轮拟按投前估值人民币 12.6 亿元定价（折合 PS 6×）。",
-            highlight: ["12.6 亿元", "PS 6×"],
-          },
-        ],
+        // 用户提交参数后由 App 追加报告块到对话流
+        followUp: [valuationFollowUpBlock],
       },
     ],
   },
 ];
+
+export const mockConversations: Conversation[] = [
+  {
+    id: "conv-aurora-fact",
+    projectId: "proj-aurora",
+    title: "营收与现金流交叉验证",
+    messages: factVerificationMessages,
+    createdAt: "2026-05-12T09:20:00+08:00",
+    updatedAt: "2026-05-12T09:23:00+08:00",
+  },
+  {
+    id: "conv-aurora-route",
+    projectId: "proj-aurora",
+    title: "项目整体怎么样（待确认）",
+    messages: routeAmbiguousMessages,
+    createdAt: "2026-05-12T09:28:00+08:00",
+    updatedAt: "2026-05-12T09:28:35+08:00",
+  },
+  {
+    id: "conv-aurora-challenge",
+    projectId: "proj-aurora",
+    title: "核心投资逻辑挑战质询",
+    messages: challengeMessages,
+    createdAt: "2026-05-12T09:31:00+08:00",
+    updatedAt: "2026-05-12T09:32:00+08:00",
+  },
+  {
+    id: "conv-aurora-valuation",
+    projectId: "proj-aurora",
+    title: "估值合理性平行测算",
+    messages: valuationMessages,
+    createdAt: "2026-05-12T09:48:00+08:00",
+    updatedAt: "2026-05-12T09:49:00+08:00",
+  },
+];
+
+/** 兼容旧导入：取首个 conversation 的 messages 作为默认 */
+export const mockMessages: ChatMessage[] = factVerificationMessages;

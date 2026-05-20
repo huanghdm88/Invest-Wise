@@ -43,7 +43,6 @@ export function ProjectWizard({ onCreate, onCancel }: ProjectWizardProps) {
     stage: "early-growth",
     riskTolerance: "R2",
     customInstruction: "",
-    webSearch: true,
     status: "draft",
     files: [],
     updatedAt: new Date().toISOString(),

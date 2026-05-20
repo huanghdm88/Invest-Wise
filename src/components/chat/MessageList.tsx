@@ -13,11 +13,8 @@ import {
   IconFactCheck,
   IconFile,
   IconInfo,
-  IconLightbulb,
-  IconSettings,
   IconThumbDown,
   IconThumbUp,
-  IconUpload,
   IconUser,
 } from "@/src/lib/icons";
 import type { AssistantBlock, ChatMessage, SourceAnchor, WorkMode } from "@/src/types";
@@ -26,7 +23,11 @@ interface MessageListProps {
   messages: ChatMessage[];
   generating: boolean;
   onViewSource: (anchor: SourceAnchor) => void;
-  onClarificationSubmit: (msgId: string, values: Record<string, string>) => void;
+  onClarificationSubmit: (
+    msgId: string,
+    values: Record<string, string>,
+    followUp?: AssistantBlock[]
+  ) => void;
   onExport: () => void;
   /** 点击报告汇总卡片，在右侧 Canvas 抽屉中展开完整报告 */
   onOpenReport: (block: AssistantBlock) => void;
@@ -36,8 +37,8 @@ interface MessageListProps {
     mode: Extract<WorkMode, "fact-check" | "challenge">,
     originalQuery: string
   ) => void;
-  /** 项目尚未就绪（草稿态：偏好未配 / 知识库未上传） */
-  awaitingSetup?: boolean;
+  /** 当前项目知识库为空时的提示 */
+  hasKnowledge?: boolean;
 }
 
 const modeIconMap: Record<WorkMode, typeof IconAuto> = {
@@ -60,7 +61,7 @@ export function MessageList({
   onExport,
   onOpenReport,
   onModePick,
-  awaitingSetup = false,
+  hasKnowledge = true,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -69,50 +70,23 @@ export function MessageList({
     if (el) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
   }, [messages, generating]);
 
-  if (awaitingSetup) {
-    return (
-      <div className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 py-10">
-        <div className="mx-auto flex max-w-xl flex-col items-center text-center">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
-            <Logo withText={false} />
-          </div>
-          <h2 className="mt-4 text-[15px] font-semibold text-gray-900">项目尚未就绪</h2>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-gray-500">
-            请先在右侧面板完成项目偏好设置，并上传投决议案、商业计划书、财务底稿等核心材料。完成「分析评估」后，即可在此发起事实交叉验证与挑战质询。
-          </p>
-
-          <ol className="mt-6 w-full space-y-2 text-left">
-            <SetupStep
-              index={1}
-              icon={<SFIcon icon={IconSettings} size={13} />}
-              title="完善「偏好」"
-              desc="选择风险容忍度、投资阶段，并填写自定义分析指令"
-            />
-            <SetupStep
-              index={2}
-              icon={<SFIcon icon={IconUpload} size={13} />}
-              title="上传「知识库」"
-              desc="支持 PDF / Word / PPT / Excel，建议含议案、BP、FDD、LDD"
-            />
-            <SetupStep
-              index={3}
-              icon={<SFIcon icon={IconLightbulb} size={13} />}
-              title="点击「分析评估」"
-              desc="Agent 将解析资料并构建项目知识图谱，随后即可开始提问"
-            />
-          </ol>
-
-          <p className="mt-6 text-[11px] text-gray-400">
-            完成以上准备后，对话区将自动激活
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div ref={scrollRef} className="thin-scroll min-h-0 flex-1 overflow-y-auto px-5 py-6">
       <div className="mx-auto max-w-4xl space-y-6">
+        {!hasKnowledge && messages.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
+              <Logo withText={false} />
+            </div>
+            <h2 className="mt-3 text-[14px] font-semibold text-gray-900">
+              知识库为空 · 仍可与 Agent 对话
+            </h2>
+            <p className="mt-1.5 max-w-md text-[12px] leading-relaxed text-gray-500">
+              你可以直接提问，Agent 将基于偏好设置与通用知识作答；上传议案 / BP / 尽调底稿后，
+              事实交叉验证与挑战质询将更精准、可溯源。
+            </p>
+          </div>
+        )}
         {messages.map((msg) => {
           if (msg.role === "system") {
             return (
@@ -164,6 +138,13 @@ export function MessageList({
             );
           }
 
+          const hasReportBlock = msg.blocks?.some(
+            (b) =>
+              b.kind === "fact-verification" ||
+              b.kind === "challenge-list" ||
+              b.kind === "valuation"
+          );
+
           return (
             <div key={msg.id} className="flex items-start gap-3">
               <div className="shrink-0">
@@ -174,7 +155,10 @@ export function MessageList({
                   switch (block.kind) {
                     case "text":
                       return (
-                        <div key={i} className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-3 text-sm leading-relaxed text-slate-800 shadow-sm">
+                        <div
+                          key={i}
+                          className="px-1 text-sm leading-relaxed text-slate-800"
+                        >
                           {block.text}
                         </div>
                       );
@@ -185,7 +169,9 @@ export function MessageList({
                           title={block.title}
                           reason={block.reason}
                           fields={block.fields}
-                          onSubmit={(v) => onClarificationSubmit(msg.id, v)}
+                          onSubmit={(v) =>
+                            onClarificationSubmit(msg.id, v, block.followUp)
+                          }
                         />
                       );
                     case "mode-pick":
@@ -222,15 +208,17 @@ export function MessageList({
                   <Button variant="ghost" size="icon-sm" aria-label="不准确" title="不准确">
                     <SFIcon icon={IconThumbDown} size={13} className="text-slate-400" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1 text-[11px] text-slate-500 hover:text-slate-900"
-                    onClick={onExport}
-                  >
-                    <SFIcon icon={IconDownload} size={11} />
-                    导出为报告（Markdown / Word）
-                  </Button>
+                  {hasReportBlock && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 gap-1 text-[11px] text-slate-500 hover:text-slate-900"
+                      onClick={onExport}
+                    >
+                      <SFIcon icon={IconDownload} size={11} />
+                      导出为报告（Markdown / Word）
+                    </Button>
+                  )}
                 </div>
               </div>
             </div>
@@ -240,39 +228,12 @@ export function MessageList({
         {generating && (
           <div className="flex items-start gap-3">
             <Logo withText={false} />
-            <div className="rounded-2xl rounded-tl-md border border-slate-200 bg-white px-4 py-2.5 shadow-sm">
-              <span className="thinking-shimmer-text text-sm font-medium">Agent 正在分析中…</span>
-            </div>
+            <span className="thinking-shimmer-text px-1 text-sm font-medium leading-relaxed">
+              Agent 正在分析中…
+            </span>
           </div>
         )}
       </div>
     </div>
-  );
-}
-
-function SetupStep({
-  index,
-  icon,
-  title,
-  desc,
-}: {
-  index: number;
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
-  return (
-    <li className="flex items-start gap-3 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5">
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[10px] font-semibold text-white">
-        {index}
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1.5 text-[13px] font-medium text-gray-900">
-          <span className="text-gray-500">{icon}</span>
-          {title}
-        </div>
-        <p className="mt-0.5 text-[11.5px] leading-relaxed text-gray-500">{desc}</p>
-      </div>
-    </li>
   );
 }

@@ -1,22 +1,17 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/src/components/ui/button";
-import { Input } from "@/src/components/ui/input";
 import { SFIcon } from "@/src/components/ui/sf-icon";
-import { Switch } from "@/src/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
 import { Textarea } from "@/src/components/ui/textarea";
+import { CompanyInfoSection } from "@/src/components/layout/CompanyInfoSection";
 import {
   IconAuto,
-  IconBuilding,
   IconCheckCircle,
-  IconCompass,
-  IconDatabase,
   IconDelete,
   IconFile,
   IconFileSpreadsheet,
   IconFileText,
-  IconLightbulb,
   IconPlus,
   IconRefresh,
   IconShieldAlert,
@@ -24,13 +19,13 @@ import {
   IconUpload,
   IconWand,
 } from "@/src/lib/icons";
-import { industryOptions } from "@/src/data/industries";
 import { cn, uid } from "@/src/lib/utils";
 import type {
   FileKind,
-  InvestmentStage,
+  FileStatus,
   KnowledgeFile,
   Project,
+  ProjectStatus,
   RiskTolerance,
 } from "@/src/types";
 
@@ -45,11 +40,6 @@ interface SettingsPanelProps {
   onRecalculate: () => void;
   onDirtyChange?: (dirty: boolean) => void;
 }
-
-const stageOptions: Array<{ value: InvestmentStage; label: string; sub: string }> = [
-  { value: "early-growth", label: "早期 / 成长期", sub: "PS 优先 · 关注 TAM 与天花板" },
-  { value: "late-pre-ipo", label: "中后期 / Pre-IPO", sub: "PE 优先 · 关注盈利质量" },
-];
 
 const riskOptions: Array<{
   value: RiskTolerance;
@@ -102,6 +92,49 @@ function kindIcon(kind: FileKind) {
   return IconFile;
 }
 
+/** 知识库 Tab 标题旁展示的处理状态 */
+type KnowledgeActivity = {
+  label: string;
+  count: number;
+  spinning: boolean;
+  tone: "amber" | "rose";
+};
+
+function getKnowledgeActivity(
+  files: KnowledgeFile[],
+  projectStatus: ProjectStatus
+): KnowledgeActivity | null {
+  const uploading = files.filter((f) => f.status === "uploading");
+  const parsing = files.filter((f) => f.status === "parsing");
+  const failed = files.filter((f) => f.status === "failed");
+
+  if (uploading.length > 0) {
+    return {
+      label: "上传中",
+      count: uploading.length,
+      spinning: true,
+      tone: "amber",
+    };
+  }
+  if (parsing.length > 0 || projectStatus === "parsing") {
+    return {
+      label: "解析中",
+      count: parsing.length > 0 ? parsing.length : files.length,
+      spinning: true,
+      tone: "amber",
+    };
+  }
+  if (failed.length > 0) {
+    return {
+      label: "部分失败",
+      count: failed.length,
+      spinning: false,
+      tone: "rose",
+    };
+  }
+  return null;
+}
+
 export function SettingsPanel({
   project,
   activeTab,
@@ -111,7 +144,6 @@ export function SettingsPanel({
   onRecalculate,
   onDirtyChange,
 }: SettingsPanelProps) {
-  // 任意偏好 / 知识库变更 → dirty = true，「分析评估」按钮被激活
   const [dirty, setDirty] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -139,17 +171,28 @@ export function SettingsPanel({
       name: f.name,
       size: formatSize(f.size),
       kind: inferKind(f.name),
-      status: "uploading",
+      status: "uploading" as FileStatus,
       uploadedAt: new Date().toISOString(),
     }));
     const merged = [...list, ...project.files];
     onUpdateFiles(merged);
     setDirty(true);
+    const newIds = new Set(list.map((f) => f.id));
+    // 上传 → 解析 → 已索引，便于 Tab 标题同步「解析中」状态
     setTimeout(() => {
       onUpdateFiles(
-        merged.map((f) => (list.find((l) => l.id === f.id) ? { ...f, status: "indexed" } : f))
+        merged.map((f) =>
+          newIds.has(f.id) ? { ...f, status: "parsing" as FileStatus } : f
+        )
       );
-    }, 1500);
+    }, 600);
+    setTimeout(() => {
+      onUpdateFiles(
+        merged.map((f) =>
+          newIds.has(f.id) ? { ...f, status: "indexed" as FileStatus } : f
+        )
+      );
+    }, 2800);
   };
 
   const removeFile = (id: string) => {
@@ -158,7 +201,11 @@ export function SettingsPanel({
   };
 
   const currentRisk = riskOptions.find((r) => r.value === project.riskTolerance);
-  const currentStage = stageOptions.find((s) => s.value === project.stage);
+
+  const knowledgeActivity = useMemo(
+    () => getKnowledgeActivity(project.files, project.status),
+    [project.files, project.status]
+  );
 
   return (
     <aside className="relative flex h-full w-[320px] shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
@@ -187,23 +234,58 @@ export function SettingsPanel({
         </div>
       </div>
 
+      {/* —— 独立模块：企业信息（默认只读 · 点击编辑切换）—— */}
+      <CompanyInfoSection project={project} onUpdate={updatePref} />
+
       <Tabs
         value={activeTab}
         onValueChange={(v) => onTabChange(v as SettingsTab)}
         className="flex flex-1 min-h-0 flex-col"
       >
         <div className="px-4 pt-2.5">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="preferences">
-              <SFIcon icon={IconWand} size={11} />
+          <TabsList
+            className="flex h-auto w-full items-center justify-start gap-2 bg-transparent p-0"
+            aria-label="项目设置分类"
+          >
+            <TabsTrigger
+              value="preferences"
+              className="rounded-full border border-transparent bg-transparent px-3.5 py-1 text-[13px] font-medium text-gray-400 shadow-none transition-colors hover:text-gray-600 data-[state=active]:border-gray-200 data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 data-[state=active]:shadow-none"
+            >
               偏好
             </TabsTrigger>
-            <TabsTrigger value="knowledge">
-              <SFIcon icon={IconDatabase} size={11} />
-              知识库
-              <span className="ml-1 rounded-full bg-gray-100 px-1.5 text-[10px] text-gray-600">
-                {project.files.length}
-              </span>
+            <TabsTrigger
+              value="knowledge"
+              className="inline-flex items-center gap-1 rounded-full border border-transparent bg-transparent px-3.5 py-1 text-[13px] font-medium text-gray-400 shadow-none transition-colors hover:text-gray-600 data-[state=active]:border-gray-200 data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 data-[state=active]:shadow-none"
+            >
+              <span>知识库</span>
+              {knowledgeActivity ? (
+                <span
+                  className={cn(
+                    "inline-flex items-center gap-0.5 text-[11px] font-medium",
+                    knowledgeActivity.tone === "amber"
+                      ? "text-amber-600"
+                      : "text-rose-600"
+                  )}
+                >
+                  {knowledgeActivity.spinning && (
+                    <SFIcon
+                      icon={IconRefresh}
+                      size={10}
+                      className="animate-spin"
+                    />
+                  )}
+                  <span>
+                    {knowledgeActivity.label}
+                    {knowledgeActivity.count > 1
+                      ? ` · ${knowledgeActivity.count}`
+                      : ""}
+                  </span>
+                </span>
+              ) : project.files.length > 0 ? (
+                <span className="text-[11px] font-normal text-gray-400">
+                  · {project.files.length}
+                </span>
+              ) : null}
             </TabsTrigger>
           </TabsList>
         </div>
@@ -218,81 +300,6 @@ export function SettingsPanel({
           </p>
 
           <div className="space-y-6">
-            <section>
-              <SectionHeader icon={<SFIcon icon={IconBuilding} size={12} />} title="企业信息" />
-              <div className="space-y-2">
-                <div>
-                  <label className="mb-1 block text-[11px] text-gray-500">企业名称</label>
-                  <Input
-                    value={project.name}
-                    onChange={(e) => updatePref({ name: e.target.value })}
-                    placeholder="请输入企业名称"
-                    className="h-9 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-[11px] text-gray-500">所属行业</label>
-                  <select
-                    value={project.industry}
-                    onChange={(e) => updatePref({ industry: e.target.value })}
-                    className={cn(
-                      "flex h-9 w-full appearance-none rounded-lg border border-[hsl(var(--input))] bg-white bg-[length:16px_16px] bg-[position:right_10px_center] bg-no-repeat px-3 py-2 pr-8 text-sm shadow-sm transition-colors",
-                      "bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2716%27 height=%2716%27 viewBox=%270 0 16 16%27 fill=%27none%27%3E%3Cpath d=%27M4 6l4 4 4-4%27 stroke=%27%236b7280%27 stroke-width=%271.5%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E')]",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gray-900/30",
-                      project.industry ? "text-gray-900" : "text-[#CCCCCC]"
-                    )}
-                  >
-                    <option value="" disabled>
-                      请选择行业 / 赛道
-                    </option>
-                    {industryOptions.map((opt) => (
-                      <option key={opt} value={opt} className="text-gray-900">
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <SectionHeader icon={<SFIcon icon={IconCompass} size={12} />} title="投资阶段" />
-              <p className="mb-2.5 text-[11px] text-gray-500">
-                前期防止 Agent 对投资阶段的识别错误，建议手动选择项目所处阶段。
-              </p>
-              <div className="grid grid-cols-1 gap-2">
-                {stageOptions.map((opt) => {
-                  const active = project.stage === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => updatePref({ stage: opt.value })}
-                      className={cn(
-                        "rounded-xl border px-3 py-2.5 text-left transition-all",
-                        active
-                          ? "border-[hsl(var(--primary))] bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] shadow-sm"
-                          : "border-[hsl(var(--border))] bg-[hsl(var(--card))] hover:border-[hsl(var(--ring))]"
-                      )}
-                    >
-                      <p className="text-sm font-medium">{opt.label}</p>
-                      <p
-                        className={cn(
-                          "mt-0.5 text-[11px]",
-                          active ? "text-gray-300" : "text-gray-500"
-                        )}
-                      >
-                        {opt.sub}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
-              {currentStage && (
-                <p className="mt-2 text-[10px] text-gray-400">当前：{currentStage.label}</p>
-              )}
-            </section>
-
             <section>
               <SectionHeader
                 icon={<SFIcon icon={IconShieldAlert} size={12} />}
@@ -342,26 +349,6 @@ export function SettingsPanel({
                 placeholder="例：本次重点审查其 AI 算力成本是否能打平、销售费用率是否健康..."
                 className="min-h-[110px] text-xs leading-relaxed"
               />
-            </section>
-
-            <section>
-              <SectionHeader icon={<SFIcon icon={IconLightbulb} size={12} />} title="工具开关" />
-              <div className="rounded-xl border border-gray-200 bg-white px-3 py-2.5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">联网搜索</p>
-                    <p className="mt-0.5 text-[11px] text-gray-500">
-                      {project.webSearch
-                        ? "已开启 · 仅在模型判断必要时调用"
-                        : "已关闭 · 仅基于知识库内容作答"}
-                    </p>
-                  </div>
-                  <Switch
-                    checked={project.webSearch}
-                    onCheckedChange={(v) => updatePref({ webSearch: v })}
-                  />
-                </div>
-              </div>
             </section>
           </div>
         </TabsContent>

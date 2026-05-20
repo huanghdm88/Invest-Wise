@@ -42,6 +42,7 @@ export {
   sfDocumentCircleFill as IconFileCheck,
 
   // —— 文件夹 / 项目 ——
+  sfFolder as IconFolder,
   sfFolderFill as IconFolderOpen,
   sfFolderBadgePlus as IconFolderPlus,
   sfSquareGrid2x2 as IconFolderManager,
@@ -65,6 +66,7 @@ export {
   sfWandAndRays as IconWand,           // 自定义指令
   sfLightbulb as IconLightbulb,
   sfBubbleRight as IconMessage,
+  sfBubbleAndPencil as IconNewConversation,
 
   // —— 安全 / 风险 ——
   sfExclamationmarkShieldFill as IconShieldAlert,
