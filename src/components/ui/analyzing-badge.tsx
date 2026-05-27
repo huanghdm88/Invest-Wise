@@ -8,11 +8,11 @@ interface AnalyzingBadgeProps {
 }
 
 /**
- * 动态「分析中」徽章：琥珀色圆点带 ping 动画。
+ * 动态「解析中」徽章：琥珀色圆点带 ping 动画。
  * 用于侧边栏项目行 & 顶部 WorkspaceHeader 项目名旁的状态指示。
  */
 export function AnalyzingBadge({
-  label = "分析中",
+  label = "解析中",
   className,
   size = "sm",
 }: AnalyzingBadgeProps) {

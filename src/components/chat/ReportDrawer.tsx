@@ -9,6 +9,7 @@ import {
   IconCalculator,
   IconChecklist,
   IconClose,
+  IconDownload,
   IconFactCheck,
 } from "@/src/lib/icons";
 import { cn } from "@/src/lib/utils";
@@ -18,6 +19,8 @@ interface ReportDrawerProps {
   block: AssistantBlock | null;
   onClose: () => void;
   onViewSource: (anchor: SourceAnchor) => void;
+  /** 点击「下载」按钮 → 由父组件统一处理（Markdown / Word 导出） */
+  onDownload?: () => void;
 }
 
 const meta = {
@@ -26,7 +29,12 @@ const meta = {
   valuation:           { eyebrow: "估值平行测算 · Valuation",          icon: IconCalculator },
 } as const;
 
-export function ReportDrawer({ block, onClose, onViewSource }: ReportDrawerProps) {
+export function ReportDrawer({
+  block,
+  onClose,
+  onViewSource,
+  onDownload,
+}: ReportDrawerProps) {
   const open = block !== null;
 
   // 关闭动画期间继续显示最后一次的报告内容，避免抽屉滑出时画面瞬间变空
@@ -97,15 +105,28 @@ export function ReportDrawer({ block, onClose, onViewSource }: ReportDrawerProps
                   </p>
                 )}
               </div>
-              <Button
-                variant="outline"
-                onClick={onClose}
-                aria-label="关闭"
-                title="关闭 (Esc)"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-0"
-              >
-                <SFIcon icon={IconClose} size={13} />
-              </Button>
+              <div className="flex shrink-0 items-center gap-2">
+                {onDownload && (
+                  <Button
+                    variant="outline"
+                    onClick={onDownload}
+                    aria-label="下载报告"
+                    title="下载报告（Markdown / Word）"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg p-0"
+                  >
+                    <SFIcon icon={IconDownload} size={13} />
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  onClick={onClose}
+                  aria-label="关闭"
+                  title="关闭 (Esc)"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg p-0"
+                >
+                  <SFIcon icon={IconClose} size={13} />
+                </Button>
+              </div>
             </div>
 
             <div className="thin-scroll min-h-0 flex-1 overflow-y-auto bg-[#fafafa] px-6 py-6">

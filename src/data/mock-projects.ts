@@ -101,4 +101,49 @@ export const mockProjects: Project[] = [
     updatedAt: "2026-05-10T11:20:00+08:00",
     files: [],
   },
+  /**
+   * 演示「资料缺乏关键信息点 → 分析任务终止」场景：
+   * 用户批量上传了 BP + 行业研报，但缺审计报告、缺投决议案、缺财务底稿，
+   * 解析系统识别后主动终止分析，并在对话流里以 analysis-aborted 卡片提示。
+   */
+  {
+    id: "proj-nebula",
+    name: "星云生物医药 Pre-A 轮",
+    industry: "医疗 · 创新药",
+    stage: "early-growth",
+    riskTolerance: "R2",
+    customInstruction:
+      "重点审查 PD-1/VEGF 双抗管线临床数据真实性与现金跑道，需要 FDD 底稿 + 临床试验报告交叉验证。",
+    status: "failed",
+    updatedAt: "2026-05-26T10:42:00+08:00",
+    files: [
+      {
+        id: "f-nebula-1",
+        name: "星云生物-商业计划书 BP_2026Q2.pptx",
+        kind: "ppt",
+        size: "12.8 MB",
+        status: "indexed",
+        category: "BP",
+        uploadedAt: "2026-05-26T10:35:00+08:00",
+      },
+      {
+        id: "f-nebula-2",
+        name: "创新药行业研报-招商证券-2026Q1.pdf",
+        kind: "pdf",
+        size: "6.1 MB",
+        status: "indexed",
+        category: "其他",
+        uploadedAt: "2026-05-26T10:36:20+08:00",
+      },
+      {
+        id: "f-nebula-3",
+        name: "星云生物-公司介绍 Deck.pdf",
+        kind: "pdf",
+        size: "3.2 MB",
+        status: "indexed",
+        category: "其他",
+        uploadedAt: "2026-05-26T10:37:11+08:00",
+      },
+    ],
+  },
 ];

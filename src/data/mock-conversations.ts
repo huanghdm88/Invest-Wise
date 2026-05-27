@@ -1,10 +1,16 @@
-import type { AssistantBlock, ChatMessage, Conversation } from "@/src/types";
+import type {
+  AssistantBlock,
+  ChatMessage,
+  Conversation,
+  RunningTask,
+} from "@/src/types";
 
 /**
- * 演示子对话 - 围绕极光智算项目拆解为三条独立子对话：
+ * 演示子对话 - 围绕极光智算项目拆解为多条独立子对话：
  *  - conv-aurora-fact：事实交叉验证
  *  - conv-aurora-route：智能路由 → 待确认
- *  - conv-aurora-challenge：挑战质询清单
+ *  - conv-aurora-challenge：挑战质询清单（已完成结果）
+ *  - conv-aurora-challenge-pending：挑战质询任务进行中（演示任务卡片）
  *  - conv-aurora-valuation：估值平行测算
  */
 
@@ -483,6 +489,182 @@ const valuationMessages: ChatMessage[] = [
   },
 ];
 
+/** 用于"挑战质询任务进行中"演示：用户发起任务，Agent 正在长任务，对话流暂时只有用户消息 */
+const challengePendingMessages: ChatMessage[] = [
+  {
+    id: "m-challenge-pending-user",
+    role: "user",
+    text: "请围绕团队基因匹配度（销售型团队做底层 Agent 平台）做一轮深度挑战质询，输出 3–5 条核心矛盾与条款建议。",
+    mode: "challenge",
+    createdAt: new Date().toISOString(),
+  },
+  {
+    id: "m-challenge-pending-sys",
+    role: "system",
+    text: "挑战质询任务已启动。该类任务涉及行业研报对照与多文档交叉佐证，预计耗时较长。任务卡片已在右侧栏实时显示进度，完成后将自动追加质询清单。",
+    createdAt: new Date().toISOString(),
+  },
+];
+
+/** 任务完成后会注入到对话流的挑战质询块（与已完成示例同结构，但聚焦"团队基因 + 战略可行性"） */
+const challengePendingResultBlock: AssistantBlock = {
+  kind: "challenge-list",
+  title: "团队基因与战略可行性 · 灵魂质询清单（3 条 · 已按 R2 稳健均衡型口径过滤）",
+  summary:
+    "围绕「销售型团队管理底层 Agent 平台」这一基因错配，结合 60% 综合毛利假设与对单一模型的依赖度，给出 3 条核心拷问与对应的对赌 / 条款建议。",
+  items: [
+    {
+      id: "cp-1",
+      priority: "P1",
+      title: "CTO 履历背书缺位，技术决策权重存疑",
+      coreLogic:
+        "CTO 张某仅以「资深架构师」概称、未披露项目与年限；外部公开渠道无对应 ML / Infra 项目背书；销售背景的两位联创合计持有 62% 表决权，技术路径决策存在系统性偏差风险。",
+      evidence: [
+        {
+          document: "BP_2026Q2.pptx",
+          page: 6,
+          excerpt:
+            "CTO 张某：「曾任职某 AI 独角兽资深架构师」，但未披露具体项目与时间区间。",
+          highlight: ["资深架构师"],
+        },
+      ],
+      actionAdvice: [
+        "建议增设 CTO 履历背调专项条款，由第三方完成（45 天内出具）",
+        "投后协议预留关键岗位变更知会权 + 12 个月内不可单方调整 CTO",
+        "在董事会层面引入一名独立技术董事席位（投资方提名）",
+      ],
+      category: "团队",
+    },
+    {
+      id: "cp-2",
+      priority: "P1",
+      title: "销售基因 vs 平台型产品执行节奏错配",
+      coreLogic:
+        "公司 2025 年 H1 新签 9 个客户中 7 个为定制项目（单客户毛利 < 25%），而 BP 描绘的是 PLG 模式（订阅毛利 65%）。在缺乏产品负责人的情况下，销售团队主导的路线极易在 12 个月内回到「人月单」模型，背离平台估值逻辑。",
+      evidence: [
+        {
+          document: "FDD 底稿.xlsx",
+          page: "Sheet · 客户与合同",
+          excerpt:
+            "2025 H1 新签合同 9 单，其中定制开发 7 单（客单价 78 – 220 万），订阅类 2 单（ARR 共 36 万）。",
+          highlight: ["定制开发 7 单", "ARR 共 36 万"],
+        },
+      ],
+      actionAdvice: [
+        "加入「12 个月内订阅 ARR 占比不低于 35%」的业绩补偿触发线",
+        "建议公司在 90 天内招聘产品负责人，否则触发本轮 5% 投后股权调整权",
+      ],
+      category: "团队",
+    },
+    {
+      id: "cp-3",
+      priority: "P2",
+      title: "对单一基础模型的成本敞口未做对冲",
+      coreLogic:
+        "目前 88% 调用集中在 GPT-5.4，公司未引入路由层；若模型涨价 30% 或 SLA 下降，单笔订单毛利将由 20% 跌至 -3%。",
+      evidence: [
+        {
+          document: "FDD 底稿.xlsx",
+          page: "Sheet · UE 测算",
+          excerpt:
+            "推理调用占比：GPT-5.4 88% / Claude 4.6 7% / 自研开源 5%；当前底层 API 成本占客单价 38%。",
+          highlight: ["88%", "38%"],
+        },
+      ],
+      actionAdvice: [
+        "要求 6 个月内引入至少 2 家底层模型供应商并接入 AI Gateway 路由",
+        "在条款中约定「单一模型供应商占比 > 70% 持续 2 个季度」需董事会单议",
+      ],
+      category: "产品",
+    },
+  ],
+  citations: [],
+};
+
+/** 预置任务：演示用户发起挑战质询后右侧栏出现「任务卡片」的过程（按 30s/任务 推进） */
+export const initialRunningTasks: RunningTask[] = [
+  {
+    id: "task-aurora-challenge-pending",
+    projectId: "proj-aurora",
+    conversationId: "conv-aurora-challenge-pending",
+    kind: "challenge",
+    title: "团队基因与战略可行性挑战",
+    summary:
+      "围绕 CTO 履历背书、销售型团队管理 Agent 平台、对单一模型的依赖度做 3 维深度拷问。",
+    // 已运行约 5s（30s 总时长），进度 ≈ 18%
+    progress: 18,
+    startedAt: new Date(Date.now() - 5_400).toISOString(),
+    resultBlocks: [challengePendingResultBlock],
+  },
+];
+
+/**
+ * 演示「批量上传后关键信息缺失 → 分析终止」场景：
+ * 用户上传了 BP + 行业研报，缺审计 / 议案 / FDD，Agent 终止解析并要求补传。
+ */
+const analysisAbortedMessages: ChatMessage[] = [
+  {
+    id: "m-aborted-sys-start",
+    role: "system",
+    text:
+      "项目「星云生物医药 Pre-A 轮」已创建，正在批量解析 3 份资料：BP_2026Q2.pptx、招商证券行业研报、公司介绍 Deck.pdf。",
+    createdAt: "2026-05-26T10:38:02+08:00",
+  },
+  {
+    id: "m-aborted-assistant",
+    role: "assistant",
+    createdAt: "2026-05-26T10:39:21+08:00",
+    blocks: [
+      {
+        kind: "analysis-aborted",
+        title: "解析任务已终止：缺少关键尽调资料",
+        reason:
+          "已识别 3 份资料均为「市场端」材料（BP + 研报 + 公司 Deck），但缺乏可用于交叉验证的财务、法律与议案文件，Agent 无法在 R2 稳健均衡口径下输出有据可依的事实验证与挑战质询，已主动终止以避免输出失真结论。",
+        parsedSummary: { parsed: 3, total: 3 },
+        missingItems: [
+          {
+            key: "audit-report",
+            label: "2024 年度审计报告（含合并 / 单体）",
+            requirement: "财务尽调",
+            severity: "P0",
+            hint:
+              "缺审计无法验证营收 / 现金流真实性，事实交叉验证模块将完全失效。",
+          },
+          {
+            key: "fdd-workbook",
+            label: "FDD 财务底稿（含口径调节表）",
+            requirement: "财务尽调",
+            severity: "P0",
+            hint:
+              "FDD 是估值平行测算与对赌条款建议的最低输入，缺则估值模块无法运行。",
+          },
+          {
+            key: "ic-memo",
+            label: "投决议案 / IM（含估值与定价章节）",
+            requirement: "投决议案",
+            severity: "P1",
+            hint:
+              "议案是 Agent 的「对照基线」，缺则只能基于 BP 表述自说自话，会降低挑战质询的针对性。",
+          },
+          {
+            key: "ldd-report",
+            label: "法律尽调备忘 LDD（含股权结构 / 重大合同）",
+            requirement: "法律尽调",
+            severity: "P2",
+            hint:
+              "缺则无法判断对赌 / 反稀释 / 优先清算等条款的合规风险敞口，可在后续补传。",
+          },
+        ],
+        nextSteps: [
+          "请补传以上 P0 / P1 资料后，Agent 会自动重启解析并恢复全部分析能力",
+          "如暂无审计报告，可先用「FDD 底稿 + 主合同」组合作为最小可行输入",
+          "如确需仅基于 BP 做行业判断，请通过下方「快速上传」按钮明确告知 Agent 切换为「轻分析模式」",
+        ],
+      },
+    ],
+  },
+];
+
 export const mockConversations: Conversation[] = [
   {
     id: "conv-aurora-fact",
@@ -491,6 +673,14 @@ export const mockConversations: Conversation[] = [
     messages: factVerificationMessages,
     createdAt: "2026-05-12T09:20:00+08:00",
     updatedAt: "2026-05-12T09:23:00+08:00",
+  },
+  {
+    id: "conv-aurora-challenge-pending",
+    projectId: "proj-aurora",
+    title: "团队基因与战略可行性挑战",
+    messages: challengePendingMessages,
+    createdAt: new Date(Date.now() - 26_000).toISOString(),
+    updatedAt: new Date(Date.now() - 24_000).toISOString(),
   },
   {
     id: "conv-aurora-route",
@@ -515,6 +705,14 @@ export const mockConversations: Conversation[] = [
     messages: valuationMessages,
     createdAt: "2026-05-12T09:48:00+08:00",
     updatedAt: "2026-05-12T09:49:00+08:00",
+  },
+  {
+    id: "conv-nebula-aborted",
+    projectId: "proj-nebula",
+    title: "首批资料解析",
+    messages: analysisAbortedMessages,
+    createdAt: "2026-05-26T10:38:00+08:00",
+    updatedAt: "2026-05-26T10:39:30+08:00",
   },
 ];
 

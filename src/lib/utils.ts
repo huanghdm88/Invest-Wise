@@ -18,7 +18,7 @@ export function isListedConversation(c: Conversation): boolean {
   return !c.isDraft;
 }
 
-/** 项目是否处于「分析中」状态：项目状态为解析中，或知识库内有文件正在上传/解析 */
+/** 项目是否处于「解析中」状态：项目状态为解析中，或知识库内有文件正在上传/解析 */
 export function isProjectAnalyzing(p: Project): boolean {
   if (p.status === "parsing") return true;
   return p.files.some((f) => f.status === "uploading" || f.status === "parsing");

@@ -71,6 +71,7 @@ export {
   // —— 安全 / 风险 ——
   sfExclamationmarkShieldFill as IconShieldAlert,
   sfCheckmarkShieldFill as IconShieldCheck,
+  sfExclamationmarkOctagonFill as IconAbort,
 
   // —— 个人 / 公司 ——
   sfPersonFill as IconUser,
@@ -82,4 +83,5 @@ export {
   // —— 登录 ——
   sfEnvelope as IconMail,
   sfKey as IconKey,
+  sfRectanglePortraitAndArrowRight as IconSignOut,
 } from "@bradleyhodges/sfsymbols";

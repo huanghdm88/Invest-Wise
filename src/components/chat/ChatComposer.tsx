@@ -115,7 +115,7 @@ export function ChatComposer({
                 send();
               }
             }}
-            placeholder="向 Agent 提问，例如「这家公司营收质量怎么样」或「核对议案与审计的营收口径」"
+            placeholder="向 Agent 提问…"
             rows={1}
             className="thin-scroll min-h-[40px] flex-1 resize-none bg-transparent px-1 py-2 text-sm text-gray-900 placeholder:text-[#CCCCCC] focus:outline-none"
           />

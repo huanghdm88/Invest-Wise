@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 
 import { Button } from "@/src/components/ui/button";
+import { AnalysisAbortedCard } from "@/src/components/chat/AnalysisAbortedCard";
 import { ClarificationCard } from "@/src/components/chat/ClarificationCard";
 import { ModePickCard } from "@/src/components/chat/ModePickCard";
 import { ReportSummaryCard } from "@/src/components/chat/ReportSummaryCard";
@@ -17,6 +18,7 @@ import {
   IconThumbUp,
   IconUser,
 } from "@/src/lib/icons";
+import { cn } from "@/src/lib/utils";
 import type { AssistantBlock, ChatMessage, SourceAnchor, WorkMode } from "@/src/types";
 
 interface MessageListProps {
@@ -39,6 +41,12 @@ interface MessageListProps {
   ) => void;
   /** 当前项目知识库为空时的提示 */
   hasKnowledge?: boolean;
+  /** 由长任务刚刚注入到对话流的 assistant 消息 id 集合：报告卡片会有一次 yellow fade 动画 */
+  newReportMessageIds?: Set<string>;
+  /** yellow fade 动画播放完成的回调；MessageList 会把 id 上抛，由父级从 newReportMessageIds 中移除，确保动画只播一次 */
+  onReportAnimated?: (msgId: string) => void;
+  /** 用户在 analysis-aborted 卡片里通过快速上传补传文件时触发，由父级写入项目知识库并追加重启分析消息 */
+  onQuickUpload?: (msgId: string, files: FileList) => void;
 }
 
 const modeIconMap: Record<WorkMode, typeof IconAuto> = {
@@ -62,6 +70,9 @@ export function MessageList({
   onOpenReport,
   onModePick,
   hasKnowledge = true,
+  newReportMessageIds,
+  onReportAnimated,
+  onQuickUpload,
 }: MessageListProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -112,7 +123,7 @@ export function MessageList({
                       </div>
                     )}
                     {msg.text && (
-                      <div className="rounded-2xl rounded-tr-md bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm">
+                      <div className="rounded-2xl rounded-tr-none bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm">
                         {msg.text}
                       </div>
                     )}
@@ -144,6 +155,7 @@ export function MessageList({
               b.kind === "challenge-list" ||
               b.kind === "valuation"
           );
+          const isNewReport = newReportMessageIds?.has(msg.id) ?? false;
 
           return (
             <div key={msg.id} className="flex items-start gap-3">
@@ -186,15 +198,47 @@ export function MessageList({
                           }
                         />
                       );
+                    case "analysis-aborted":
+                      return (
+                        <AnalysisAbortedCard
+                          key={i}
+                          block={block}
+                          onQuickUpload={(files) =>
+                            onQuickUpload?.(msg.id, files)
+                          }
+                        />
+                      );
                     case "fact-verification":
                     case "challenge-list":
                     case "valuation":
                       return (
-                        <ReportSummaryCard
+                        <div
                           key={i}
-                          block={block}
-                          onOpen={() => onOpenReport(block)}
-                        />
+                          className={cn(
+                            "relative",
+                            isNewReport && "animate-yellow-card-ring"
+                          )}
+                          // ring 动画跑完后通知父级清掉 id，避免下次重挂载又播一次
+                          onAnimationEnd={(e) => {
+                            if (
+                              isNewReport &&
+                              e.animationName === "yellow-card-ring"
+                            ) {
+                              onReportAnimated?.(msg.id);
+                            }
+                          }}
+                        >
+                          <ReportSummaryCard
+                            block={block}
+                            onOpen={() => onOpenReport(block)}
+                          />
+                          {isNewReport && (
+                            <span
+                              aria-hidden
+                              className="animate-yellow-card-overlay pointer-events-none absolute inset-0 rounded-2xl bg-yellow-200/30"
+                            />
+                          )}
+                        </div>
                       );
                     default:
                       return null;
@@ -229,7 +273,7 @@ export function MessageList({
           <div className="flex items-start gap-3">
             <Logo withText={false} />
             <span className="thinking-shimmer-text px-1 text-sm font-medium leading-relaxed">
-              Agent 正在分析中…
+              Agent 正在解析中…
             </span>
           </div>
         )}

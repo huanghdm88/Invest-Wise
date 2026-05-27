@@ -165,6 +165,32 @@ export type AssistantBlock =
       }>;
       conclusion: string;
       citations?: SourceAnchor[];
+    }
+  | {
+      /**
+       * 分析终止卡片：当批量上传的资料缺乏关键信息点（如缺审计 / 缺议案 / 缺财务底稿）时，
+       * Agent 主动终止分析并提示用户补传材料。卡片自带「快速上传」入口。
+       */
+      kind: "analysis-aborted";
+      title: string;
+      /** 终止原因总览，一句话 */
+      reason: string;
+      /** 缺失的关键信息点（每项独立一条） */
+      missingItems: Array<{
+        key: string;
+        /** 缺失项名称，如「2024 年度审计报告」 */
+        label: string;
+        /** 期望的文档分类（与 KnowledgeFile.category 同名） */
+        requirement: NonNullable<KnowledgeFile["category"]>;
+        /** 严重等级：P0 缺则无法启动 / P1 关键缺失 / P2 影响精度 */
+        severity: Extract<Priority, "P0" | "P1" | "P2">;
+        /** 一行补充说明，告诉用户为什么需要 */
+        hint?: string;
+      }>;
+      /** 解析进度概览：已识别 parsed / total */
+      parsedSummary?: { parsed: number; total: number };
+      /** 给到用户的可操作建议（条款式） */
+      nextSteps?: string[];
     };
 
 export interface ChatMessage {
@@ -178,4 +204,27 @@ export interface ChatMessage {
   attachments?: Array<{ name: string; size: string; kind: FileKind }>;
   mode?: WorkMode;
   createdAt: string;
+}
+
+/** 长任务类型 */
+export type RunningTaskKind = "challenge" | "fact-check" | "valuation";
+
+/**
+ * 长耗时任务（如挑战质询）。展示在右侧栏的任务卡片中，
+ * 完成后会把 resultBlocks 自动注入到对应 conversation 的对话流。
+ */
+export interface RunningTask {
+  id: string;
+  projectId: string;
+  conversationId: string;
+  kind: RunningTaskKind;
+  /** 卡片标题（任务核心问题） */
+  title: string;
+  /** 1–2 行简述（输入的原始问题或 Agent 概括） */
+  summary: string;
+  /** 0 – 100；ticker 推进 */
+  progress: number;
+  startedAt: string;
+  /** 任务完成后注入对话流的 assistant block */
+  resultBlocks: AssistantBlock[];
 }

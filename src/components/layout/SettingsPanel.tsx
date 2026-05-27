@@ -1,158 +1,31 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
+import { ChallengeTaskCard } from "@/src/components/chat/ChallengeTaskCard";
+import { CompanyInfoSection } from "@/src/components/layout/CompanyInfoSection";
 import { Button } from "@/src/components/ui/button";
 import { SFIcon } from "@/src/components/ui/sf-icon";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/src/components/ui/tabs";
-import { Textarea } from "@/src/components/ui/textarea";
-import { CompanyInfoSection } from "@/src/components/layout/CompanyInfoSection";
-import {
-  IconAuto,
-  IconCheckCircle,
-  IconDelete,
-  IconFile,
-  IconFileSpreadsheet,
-  IconFileText,
-  IconPlus,
-  IconRefresh,
-  IconShieldAlert,
-  IconTarget,
-  IconUpload,
-  IconWand,
-} from "@/src/lib/icons";
-import { cn, uid } from "@/src/lib/utils";
-import type {
-  FileKind,
-  FileStatus,
-  KnowledgeFile,
-  Project,
-  ProjectStatus,
-  RiskTolerance,
-} from "@/src/types";
-
-export type SettingsTab = "preferences" | "knowledge";
+import { IconChallenge, IconTarget } from "@/src/lib/icons";
+import { cn } from "@/src/lib/utils";
+import type { Project, RunningTask } from "@/src/types";
 
 interface SettingsPanelProps {
   project: Project;
-  activeTab: SettingsTab;
-  onTabChange: (tab: SettingsTab) => void;
+  runningTasks: RunningTask[];
   onUpdate: (next: Partial<Project>) => void;
-  onUpdateFiles: (files: KnowledgeFile[]) => void;
   onRecalculate: () => void;
-  onDirtyChange?: (dirty: boolean) => void;
-}
-
-const riskOptions: Array<{
-  value: RiskTolerance;
-  label: string;
-  shortLabel: string;
-  desc: string;
-  icon: typeof IconShieldAlert;
-}> = [
-  {
-    value: "R1",
-    label: "国资防守型",
-    shortLabel: "R1",
-    desc: "极度敏感。任何 P2 级现金流 / 关联交易 / 财务偏差 > 5%，强制升格为 P1 甚至 P0；条款建议附加连带责任的现金回购对赌。",
-    icon: IconShieldAlert,
-  },
-  {
-    value: "R2",
-    label: "稳健均衡型",
-    shortLabel: "R2",
-    desc: "执行基准 P0–P4 分级过滤，不做主观升降级；IRR 锚定 15%–20%；倾向于业绩补偿条款或分期对赌打款。",
-    icon: IconTarget,
-  },
-  {
-    value: "R3",
-    label: "激进创投型",
-    shortLabel: "R3",
-    desc: "增长与颠覆性优先。压制审计噪音（应收周转慢、短期现金流为负等 P1 主动降级到 P2）；70% 算力集中在 TAM / 技术代差 / 团队基因；IRR 锚定 20%–25%。",
-    icon: IconAuto,
-  },
-];
-
-function formatSize(bytes: number) {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function inferKind(name: string): FileKind {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  if (ext === "pdf") return "pdf";
-  if (["doc", "docx"].includes(ext)) return "word";
-  if (["ppt", "pptx"].includes(ext)) return "ppt";
-  if (["xls", "xlsx", "csv"].includes(ext)) return "excel";
-  return "other";
-}
-
-function kindIcon(kind: FileKind) {
-  if (kind === "excel") return IconFileSpreadsheet;
-  if (kind === "pdf" || kind === "word") return IconFileText;
-  return IconFile;
-}
-
-/** 知识库 Tab 标题旁展示的处理状态 */
-type KnowledgeActivity = {
-  label: string;
-  count: number;
-  spinning: boolean;
-  tone: "amber" | "rose";
-};
-
-function getKnowledgeActivity(
-  files: KnowledgeFile[],
-  projectStatus: ProjectStatus
-): KnowledgeActivity | null {
-  const uploading = files.filter((f) => f.status === "uploading");
-  const parsing = files.filter((f) => f.status === "parsing");
-  const failed = files.filter((f) => f.status === "failed");
-
-  if (uploading.length > 0) {
-    return {
-      label: "上传中",
-      count: uploading.length,
-      spinning: true,
-      tone: "amber",
-    };
-  }
-  if (parsing.length > 0 || projectStatus === "parsing") {
-    return {
-      label: "解析中",
-      count: parsing.length > 0 ? parsing.length : files.length,
-      spinning: true,
-      tone: "amber",
-    };
-  }
-  if (failed.length > 0) {
-    return {
-      label: "部分失败",
-      count: failed.length,
-      spinning: false,
-      tone: "rose",
-    };
-  }
-  return null;
+  /** 点击任务卡片：跳转到任务对应的对话 */
+  onOpenTaskConversation?: (conversationId: string) => void;
 }
 
 export function SettingsPanel({
   project,
-  activeTab,
-  onTabChange,
+  runningTasks,
   onUpdate,
-  onUpdateFiles,
   onRecalculate,
-  onDirtyChange,
+  onOpenTaskConversation,
 }: SettingsPanelProps) {
   const [dirty, setDirty] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [drag, setDrag] = useState(false);
-
-  useEffect(() => {
-    onDirtyChange?.(dirty);
-  }, [dirty, onDirtyChange]);
 
   useEffect(() => {
     setDirty(false);
@@ -164,56 +37,15 @@ export function SettingsPanel({
     setDirty(true);
   };
 
-  const addFiles = (files: FileList | null) => {
-    if (!files || files.length === 0) return;
-    const list: KnowledgeFile[] = Array.from(files).map((f) => ({
-      id: uid("file"),
-      name: f.name,
-      size: formatSize(f.size),
-      kind: inferKind(f.name),
-      status: "uploading" as FileStatus,
-      uploadedAt: new Date().toISOString(),
-    }));
-    const merged = [...list, ...project.files];
-    onUpdateFiles(merged);
-    setDirty(true);
-    const newIds = new Set(list.map((f) => f.id));
-    // 上传 → 解析 → 已索引，便于 Tab 标题同步「解析中」状态
-    setTimeout(() => {
-      onUpdateFiles(
-        merged.map((f) =>
-          newIds.has(f.id) ? { ...f, status: "parsing" as FileStatus } : f
-        )
-      );
-    }, 600);
-    setTimeout(() => {
-      onUpdateFiles(
-        merged.map((f) =>
-          newIds.has(f.id) ? { ...f, status: "indexed" as FileStatus } : f
-        )
-      );
-    }, 2800);
-  };
-
-  const removeFile = (id: string) => {
-    onUpdateFiles(project.files.filter((f) => f.id !== id));
-    setDirty(true);
-  };
-
-  const currentRisk = riskOptions.find((r) => r.value === project.riskTolerance);
-
-  const knowledgeActivity = useMemo(
-    () => getKnowledgeActivity(project.files, project.status),
-    [project.files, project.status]
-  );
-
   return (
     <aside className="relative flex h-full w-[320px] shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
       <div className="flex items-center justify-between border-b border-[hsl(var(--border))] px-4 py-3">
         <div>
-          <p className="text-[13px] font-semibold text-[hsl(var(--foreground))]">项目设置</p>
+          <p className="text-[13px] font-semibold text-[hsl(var(--foreground))]">
+            项目设置
+          </p>
           <p className="text-[11px] text-[hsl(var(--muted-foreground))]">
-            {dirty ? "偏好或知识库已更新，待重新分析评估" : "偏好与知识库 · 即时编辑"}
+            {dirty ? "偏好已更新，待重新分析评估" : "企业信息 / 偏好 · 即时编辑"}
           </p>
         </div>
         <div
@@ -234,223 +66,34 @@ export function SettingsPanel({
         </div>
       </div>
 
-      {/* —— 独立模块：企业信息（默认只读 · 点击编辑切换）—— */}
       <CompanyInfoSection project={project} onUpdate={updatePref} />
 
-      <Tabs
-        value={activeTab}
-        onValueChange={(v) => onTabChange(v as SettingsTab)}
-        className="flex flex-1 min-h-0 flex-col"
-      >
-        <div className="px-4 pt-2.5">
-          <TabsList
-            className="flex h-auto w-full items-center justify-start gap-2 bg-transparent p-0"
-            aria-label="项目设置分类"
-          >
-            <TabsTrigger
-              value="preferences"
-              className="rounded-full border border-transparent bg-transparent px-3.5 py-1 text-[13px] font-medium text-gray-400 shadow-none transition-colors hover:text-gray-600 data-[state=active]:border-gray-200 data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 data-[state=active]:shadow-none"
-            >
-              偏好
-            </TabsTrigger>
-            <TabsTrigger
-              value="knowledge"
-              className="inline-flex items-center gap-1 rounded-full border border-transparent bg-transparent px-3.5 py-1 text-[13px] font-medium text-gray-400 shadow-none transition-colors hover:text-gray-600 data-[state=active]:border-gray-200 data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 data-[state=active]:shadow-none"
-            >
-              <span>知识库</span>
-              {knowledgeActivity ? (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-0.5 text-[11px] font-medium",
-                    knowledgeActivity.tone === "amber"
-                      ? "text-amber-600"
-                      : "text-rose-600"
-                  )}
-                >
-                  {knowledgeActivity.spinning && (
-                    <SFIcon
-                      icon={IconRefresh}
-                      size={10}
-                      className="animate-spin"
-                    />
-                  )}
-                  <span>
-                    {knowledgeActivity.label}
-                    {knowledgeActivity.count > 1
-                      ? ` · ${knowledgeActivity.count}`
-                      : ""}
-                  </span>
-                </span>
-              ) : project.files.length > 0 ? (
-                <span className="text-[11px] font-normal text-gray-400">
-                  · {project.files.length}
-                </span>
-              ) : null}
-            </TabsTrigger>
-          </TabsList>
-        </div>
-
-        {/* —— 偏好 Tab —— */}
-        <TabsContent
-          value="preferences"
-          className="thin-scroll mt-2.5 flex-1 overflow-y-auto px-4 pb-4"
-        >
-          <p className="mb-4 text-[11px] text-gray-500">
-            修改后将在底部「分析评估」按钮上提示，需重新分析评估方可生效。
-          </p>
-
-          <div className="space-y-6">
-            <section>
-              <SectionHeader
-                icon={<SFIcon icon={IconShieldAlert} size={12} />}
-                title="风险容忍度"
-              />
-              <div className="mb-2 grid grid-cols-3 gap-1 rounded-xl bg-gray-100 p-1">
-                {riskOptions.map((opt) => {
-                  const active = project.riskTolerance === opt.value;
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => updatePref({ riskTolerance: opt.value })}
-                      className={cn(
-                        "flex flex-col items-center gap-0.5 rounded-lg py-2 text-xs font-semibold transition-all",
-                        active
-                          ? "bg-white text-gray-900 shadow-sm"
-                          : "text-gray-500 hover:text-gray-800"
-                      )}
-                    >
-                      <SFIcon icon={opt.icon} size={13} />
-                      {opt.shortLabel}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5">
-                <p className="text-xs font-medium text-gray-900">{currentRisk?.label}</p>
-                <p className="mt-1 text-[11px] leading-relaxed text-gray-600">
-                  {currentRisk?.desc}
-                </p>
-              </div>
-            </section>
-
-            <section>
-              <SectionHeader icon={<SFIcon icon={IconWand} size={12} />} title="自定义分析指令" />
-              <p className="mb-2 text-[11px] text-gray-500">
-                将作为{" "}
-                <span className="rounded bg-gray-900 px-1 py-0.5 font-medium text-white">
-                  最高优先级
-                </span>{" "}
-                注入 System Prompt，影响每一步分析。
-              </p>
-              <Textarea
-                value={project.customInstruction}
-                onChange={(e) => updatePref({ customInstruction: e.target.value })}
-                placeholder="例：本次重点审查其 AI 算力成本是否能打平、销售费用率是否健康..."
-                className="min-h-[110px] text-xs leading-relaxed"
-              />
-            </section>
-          </div>
-        </TabsContent>
-
-        {/* —— 知识库 Tab —— */}
-        <TabsContent
-          value="knowledge"
-          className="thin-scroll mt-2.5 flex-1 overflow-y-auto px-4 pb-4"
-        >
-          <p className="mb-3 text-[11px] text-[hsl(var(--muted-foreground))]">
-            上传 / 删除资料后将影响后续上下文召回，需在底部点击「分析评估」。
-          </p>
-
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setDrag(true);
-            }}
-            onDragLeave={() => setDrag(false)}
-            onDrop={(e) => {
-              e.preventDefault();
-              setDrag(false);
-              addFiles(e.dataTransfer.files);
-            }}
-            className={cn(
-              "flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition-all",
-              drag
-                ? "border-[hsl(var(--primary))] bg-[hsl(var(--muted))]"
-                : "border-[hsl(var(--border))] bg-[hsl(var(--muted))]/40 hover:border-[hsl(var(--ring))]"
-            )}
-          >
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white text-gray-700 shadow-sm">
-              <SFIcon icon={IconUpload} size={15} />
-            </div>
-            <p className="text-xs font-semibold text-gray-900">拖入材料或点击上传</p>
-            <p className="text-[11px] text-gray-500">PDF / Word / PPT / Excel · ≤ 50 MB</p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-1"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <SFIcon icon={IconPlus} size={11} />
-              浏览文件
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.csv"
-              onChange={(e) => {
-                addFiles(e.target.files);
-                e.target.value = "";
-              }}
+      <div className="thin-scroll flex-1 overflow-y-auto px-4 py-4">
+        {runningTasks.length > 0 ? (
+          <section>
+            <SectionHeader
+              icon={<SFIcon icon={IconChallenge} size={12} />}
+              title={`进行中任务 · ${runningTasks.length}`}
             />
-          </div>
-
-          <div className="mt-4 rounded-2xl border border-gray-200 bg-white">
-            <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2">
-              <p className="text-[11px] font-semibold text-gray-700">
-                已纳入资料 · {project.files.length}
-              </p>
-              <p className="text-[10px] text-gray-400">仅本项目可用</p>
+            <div className="space-y-2">
+              {runningTasks.map((task) => (
+                <ChallengeTaskCard
+                  key={task.id}
+                  task={task}
+                  projectName={project.name}
+                  onOpen={() => onOpenTaskConversation?.(task.conversationId)}
+                />
+              ))}
             </div>
-            {project.files.length === 0 ? (
-              <div className="px-4 py-6 text-center text-[11px] text-gray-400">
-                暂无资料，建议上传：投决议案 / 审计报告 / 尽调备忘 / BP / 行业研报
-              </div>
-            ) : (
-              <ul className="divide-y divide-gray-100">
-                {project.files.map((f) => {
-                  const Icon = kindIcon(f.kind);
-                  return (
-                    <li key={f.id} className="flex items-center gap-2.5 px-3 py-2.5">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-50 text-gray-600">
-                        <SFIcon icon={Icon} size={13} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs font-medium text-gray-900">{f.name}</p>
-                        <p className="text-[10px] text-gray-500">
-                          {f.size} · {f.kind.toUpperCase()}
-                          {f.category ? ` · ${f.category}` : ""}
-                        </p>
-                      </div>
-                      <FileStatusBadge status={f.status} />
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        aria-label="删除资料"
-                        onClick={() => removeFile(f.id)}
-                      >
-                        <SFIcon icon={IconDelete} size={12} className="text-gray-400" />
-                      </Button>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
+          </section>
+        ) : (
+          <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/50 px-4 py-6 text-center">
+            <p className="text-[11.5px] text-gray-500">
+              暂无进行中任务。发起挑战质询后将在此处实时显示进度。
+            </p>
           </div>
-        </TabsContent>
-      </Tabs>
+        )}
+      </div>
 
       <div className="border-t border-[hsl(var(--border))] px-4 py-3">
         <Button
@@ -475,12 +118,18 @@ export function SettingsPanel({
         <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/30 backdrop-blur-[2px]">
           <div className="mx-6 w-full max-w-sm rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 shadow-[var(--shadow-notion-deep)]">
             <div className="mb-3 flex items-center gap-2">
-              <SFIcon icon={IconTarget} size={15} className="text-[hsl(var(--foreground))]" />
-              <h4 className="text-sm font-semibold text-[hsl(var(--foreground))]">开始分析评估？</h4>
+              <SFIcon
+                icon={IconTarget}
+                size={15}
+                className="text-[hsl(var(--foreground))]"
+              />
+              <h4 className="text-sm font-semibold text-[hsl(var(--foreground))]">
+                开始分析评估？
+              </h4>
             </div>
             <p className="text-xs leading-relaxed text-[hsl(var(--muted-foreground))]">
-              确认后将清空当前会话的事实验证与挑战质询清单，按最新偏好（企业信息 / 投资阶段 / 风险容忍度 /
-              自定义指令）与知识库重新触发全量工作流。该过程不可逆。
+              确认后将清空当前会话的事实验证与挑战质询清单，按最新偏好（企业信息 / 投资阶段 /
+              风险容忍度 / 自定义指令）与知识库重新触发全量工作流。该过程不可逆。
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setShowConfirm(false)}>
@@ -512,31 +161,4 @@ function SectionHeader({ icon, title }: { icon: React.ReactNode; title: string }
       {title}
     </div>
   );
-}
-
-function FileStatusBadge({ status }: { status: KnowledgeFile["status"] }) {
-  if (status === "indexed") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-        <SFIcon icon={IconCheckCircle} size={10} />
-        已索引
-      </span>
-    );
-  }
-  if (status === "parsing" || status === "uploading") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">
-        <SFIcon icon={IconRefresh} size={10} className="animate-spin" />
-        {status === "parsing" ? "解析中" : "上传中"}
-      </span>
-    );
-  }
-  if (status === "failed") {
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-[10px] font-medium text-rose-700">
-        失败
-      </span>
-    );
-  }
-  return null;
 }

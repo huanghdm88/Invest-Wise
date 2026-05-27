@@ -89,6 +89,71 @@
   animation: staged-reveal 0.45s ease forwards;
 }
 
+/* 任务卡片进场动画：从上方挤压展开 + 琥珀色 ring 提示 */
+@keyframes task-card-reveal {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scaleY(0.6);
+    max-height: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+  55% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1.02);
+    max-height: 220px;
+    margin-top: 0;
+    margin-bottom: 0;
+    box-shadow: 0 0 0 6px rgba(251, 191, 36, 0.35);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scaleY(1);
+    max-height: 220px;
+    margin-top: 0;
+    margin-bottom: 0;
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+.animate-task-card-reveal {
+  transform-origin: top center;
+  animation: task-card-reveal 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* 新报告高亮：外圈黄色光晕从浅 → 透明，2s 内淡出；强度刻意调低，避免太「轰」 */
+@keyframes yellow-card-ring {
+  0% {
+    box-shadow:
+      0 0 0 3px rgba(250, 204, 21, 0.22),
+      0 0 12px 3px rgba(250, 204, 21, 0.14);
+  }
+  60% {
+    box-shadow:
+      0 0 0 2px rgba(250, 204, 21, 0.1),
+      0 0 6px 2px rgba(250, 204, 21, 0.06);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+  }
+}
+
+.animate-yellow-card-ring {
+  border-radius: 1rem; /* 与 ReportSummaryCard 的 rounded-2xl 一致，避免光晕走形 */
+  animation: yellow-card-ring 2s ease-out forwards;
+}
+
+/* 报告卡片表面叠一层极淡黄色 wash，1.2s 内透明，提示「新内容」 */
+@keyframes yellow-card-overlay {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.animate-yellow-card-overlay {
+  animation: yellow-card-overlay 1.2s ease-out forwards;
+}
+
 .thinking-shimmer-text {
   display: inline-block;
   background: linear-gradient(90deg, #111827 0%, #9ca3af 38%, #d1d5db 50%, #9ca3af 62%, #111827 100%);

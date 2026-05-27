@@ -13,6 +13,8 @@ interface WorkspaceHeaderProps {
   settingsOpen: boolean;
   onToggleSettings: () => void;
   onRenameConversation: (newTitle: string) => void;
+  /** 点击项目名 / 返回按钮：回到项目主页 */
+  onBackToProjectHome?: () => void;
 }
 
 export function WorkspaceHeader({
@@ -21,6 +23,7 @@ export function WorkspaceHeader({
   settingsOpen,
   onToggleSettings,
   onRenameConversation,
+  onBackToProjectHome,
 }: WorkspaceHeaderProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(conversation?.title ?? "");
@@ -44,12 +47,14 @@ export function WorkspaceHeader({
   return (
     <header className="flex items-center justify-between gap-2.5 border-b border-[hsl(var(--border))] bg-[hsl(var(--card))] px-4 py-2.5">
       <div className="flex min-w-0 items-center gap-1.5">
-        <span
-          className="max-w-[120px] shrink-0 truncate text-[12px] text-gray-500"
-          title={project.name}
+        <button
+          type="button"
+          onClick={onBackToProjectHome}
+          className="max-w-[140px] shrink-0 truncate rounded-md px-1.5 py-0.5 text-[12px] text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+          title={`返回「${project.name}」项目主页`}
         >
           {project.name}
-        </span>
+        </button>
         {analyzing && <AnalyzingBadge size="md" />}
         <span className="text-gray-300">/</span>
         {conversation ? (
