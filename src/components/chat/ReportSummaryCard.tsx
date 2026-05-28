@@ -2,21 +2,35 @@ import { PriorityBadge } from "@/src/components/chat/PriorityBadge";
 import { SFIcon } from "@/src/components/ui/sf-icon";
 import {
   IconArrowRight,
+  IconBuilding,
   IconCalculator,
   IconChecklist,
   IconFactCheck,
 } from "@/src/lib/icons";
-import { cn } from "@/src/lib/utils";
+import { cn, formatRelative } from "@/src/lib/utils";
 import type { AssistantBlock, Priority } from "@/src/types";
 
 type ReportBlock = Extract<
   AssistantBlock,
-  { kind: "fact-verification" | "challenge-list" | "valuation" }
+  {
+    kind:
+      | "fact-verification"
+      | "challenge-list"
+      | "valuation"
+      | "enterprise-analysis";
+  }
 >;
 
 interface ReportSummaryCardProps {
   block: ReportBlock;
   onOpen: () => void;
+  /** 来源（仅项目主页历史报告：显示在卡片右上角） */
+  sourceLabel?: string;
+  /** 生成时间（仅项目主页历史报告：显示在标题下方） */
+  createdAt?: string;
+  /** 新报告 yellow fade */
+  isNew?: boolean;
+  onAnimated?: () => void;
 }
 
 interface SummaryConfig {
@@ -58,6 +72,27 @@ function buildConfig(block: ReportBlock): SummaryConfig {
     };
   }
 
+  if (block.kind === "enterprise-analysis") {
+    const p1 = block.dimensions.filter(
+      (d) => d.level === "P0" || d.level === "P1"
+    ).length;
+    return {
+      eyebrow: "企业分析评估",
+      icon: IconBuilding,
+      accent: "text-indigo-600",
+      stats: [
+        { label: "评估维度", value: `${block.dimensions.length} 项` },
+        {
+          label: "P0/P1 维度",
+          value: `${p1} 项`,
+          tone: p1 > 0 ? "p1" : "neutral",
+        },
+        { label: "关键结论", value: `${block.highlights.length} 条` },
+      ],
+      level: block.overallLevel,
+    };
+  }
+
   // valuation
   return {
     eyebrow: "估值平行测算",
@@ -83,10 +118,26 @@ const toneClass: Record<NonNullable<SummaryConfig["stats"][number]["tone"]>, str
   p2: "text-amber-600",
 };
 
-export function ReportSummaryCard({ block, onOpen }: ReportSummaryCardProps) {
+export function ReportSummaryCard({
+  block,
+  onOpen,
+  sourceLabel,
+  createdAt,
+  isNew,
+  onAnimated,
+}: ReportSummaryCardProps) {
   const cfg = buildConfig(block);
+  const showHistoryMeta = Boolean(sourceLabel || createdAt);
 
   return (
+    <div
+      className={cn("relative", isNew && "animate-yellow-card-ring")}
+      onAnimationEnd={(e) => {
+        if (isNew && e.animationName === "yellow-card-ring") {
+          onAnimated?.();
+        }
+      }}
+    >
     <button
       type="button"
       onClick={onOpen}
@@ -96,16 +147,39 @@ export function ReportSummaryCard({ block, onOpen }: ReportSummaryCardProps) {
       )}
     >
       <div className="border-b border-gray-100 bg-gradient-to-br from-white to-gray-50/60 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <SFIcon icon={cfg.icon} size={12} className={cfg.accent} />
-          <span className={cn("text-[10px] font-semibold uppercase tracking-[0.16em]", cfg.accent)}>
-            {cfg.eyebrow}
-          </span>
-          <span className="text-[10px] font-medium text-gray-300">·</span>
-          <span className="text-[10px] font-medium text-gray-400">报告汇总</span>
-          {cfg.level && <PriorityBadge priority={cfg.level} size="sm" />}
+        <div
+          className={cn(
+            "flex gap-3",
+            showHistoryMeta ? "items-start justify-between" : "items-center"
+          )}
+        >
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+            <SFIcon icon={cfg.icon} size={12} className={cfg.accent} />
+            <span
+              className={cn(
+                "text-[10px] font-semibold uppercase tracking-[0.16em]",
+                cfg.accent
+              )}
+            >
+              {cfg.eyebrow}
+            </span>
+            {cfg.level && <PriorityBadge priority={cfg.level} size="sm" />}
+          </div>
+          {sourceLabel && (
+            <span
+              className="max-w-[42%] shrink-0 truncate text-right text-[10.5px] font-medium text-gray-400"
+              title={sourceLabel}
+            >
+              {sourceLabel}
+            </span>
+          )}
         </div>
-        <h3 className="mt-2 text-[15px] font-semibold leading-snug text-gray-900">{block.title}</h3>
+        <h3 className="mt-2 text-[15px] font-semibold leading-snug text-gray-900">
+          {block.title}
+        </h3>
+        {createdAt && (
+          <p className="mt-1 text-[11px] text-gray-400">{formatRelative(createdAt)}</p>
+        )}
         <p className="mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed text-gray-600">
           {"summary" in block ? block.summary : ""}
         </p>
@@ -133,5 +207,12 @@ export function ReportSummaryCard({ block, onOpen }: ReportSummaryCardProps) {
         </span>
       </div>
     </button>
+    {isNew && (
+      <span
+        aria-hidden
+        className="animate-yellow-card-overlay pointer-events-none absolute inset-0 rounded-2xl bg-yellow-200/30"
+      />
+    )}
+    </div>
   );
 }

@@ -4,18 +4,27 @@ import { LoginPage } from "@/src/components/auth/LoginPage";
 import { ChatComposer } from "@/src/components/chat/ChatComposer";
 import { MessageList } from "@/src/components/chat/MessageList";
 import { QuoteViewer } from "@/src/components/chat/QuoteViewer";
+import { ParsingGateDialog } from "@/src/components/chat/ParsingGateDialog";
 import { ReportDrawer } from "@/src/components/chat/ReportDrawer";
+import type { ReportDrawerMeta } from "@/src/components/chat/ReportDrawer";
 import { SettingsPanel } from "@/src/components/layout/SettingsPanel";
 import { Sidebar } from "@/src/components/layout/Sidebar";
 import { WorkspaceHeader } from "@/src/components/layout/WorkspaceHeader";
 import { ProjectHome } from "@/src/components/project/ProjectHome";
+import type { ProjectHomeTab } from "@/src/components/project/ProjectHome";
 import { ProjectWizard } from "@/src/components/project/ProjectWizard";
+import { Button } from "@/src/components/ui/button";
+import { SFIcon } from "@/src/components/ui/sf-icon";
 import { TooltipProvider } from "@/src/components/ui/tooltip";
 import {
   initialRunningTasks,
   mockConversations,
 } from "@/src/data/mock-conversations";
 import { mockProjects } from "@/src/data/mock-projects";
+import {
+  extractConversationReports,
+  type ReportBlock,
+} from "@/src/lib/project-reports";
 import { cn, isListedConversation, uid } from "@/src/lib/utils";
 import type {
   AssistantBlock,
@@ -83,6 +92,24 @@ function App() {
   >(() => new Set());
   /** 长任务刚刚注入到对话流的报告消息 id；MessageList 会让对应报告卡片走一次 yellow fade 动画 */
   const [newReportMsgIds, setNewReportMsgIds] = useState<Set<string>>(() => new Set());
+  const [homeTab, setHomeTab] = useState<ProjectHomeTab>("conversations");
+  /**
+   * 项目知识库仍在解析时，用户发起 fact-check / challenge 会先弹窗提示。
+   * 取消时所有副作用（新建对话、写入用户消息）都不会发生；
+   * 「继续执行」时按 conversationId 是否为 null 决定是否新建草稿对话，并补写用户消息。
+   */
+  const [pendingTask, setPendingTask] = useState<
+    | {
+        kind: "challenge" | "fact-check";
+        /** 目标对话 id；为 null 表示「继续」时需要先 openOrCreateDraftFor */
+        conversationId: string | null;
+        projectId: string;
+        userQuery: string;
+        /** 待写入的用户消息；取消时丢弃，避免在对话流留下半截气泡 */
+        userMsg?: ChatMessage;
+      }
+    | null
+  >(null);
 
   // 右侧项目设置面板的折叠状态（持久化到 localStorage）
   const [settingsOpen, setSettingsOpen] = useState<boolean>(() => {
@@ -97,7 +124,10 @@ function App() {
     }
   }, [settingsOpen]);
 
-  const [openReport, setOpenReport] = useState<AssistantBlock | null>(null);
+  const [openReport, setOpenReport] = useState<ReportBlock | null>(null);
+  const [openReportMeta, setOpenReportMeta] = useState<ReportDrawerMeta | null>(
+    null
+  );
 
   const currentProject = useMemo(
     () => projects.find((p) => p.id === currentProjectId) ?? projects[0],
@@ -114,6 +144,19 @@ function App() {
   const currentProjectRunningTasks = useMemo(
     () => runningTasks.filter((t) => t.projectId === currentProjectId),
     [runningTasks, currentProjectId]
+  );
+
+  const projectReports = useMemo(
+    () => extractConversationReports(currentProjectId, conversations),
+    [currentProjectId, conversations]
+  );
+
+  const handleOpenReport = useCallback(
+    (block: ReportBlock, meta?: ReportDrawerMeta) => {
+      setOpenReport(block);
+      setOpenReportMeta(meta ?? null);
+    },
+    []
   );
 
   /** 哪些对话当前有正在跑的任务（用于侧边栏显示小 loading 动画） */
@@ -297,6 +340,16 @@ function App() {
     return "ambiguous";
   };
 
+  /** 判断项目知识库是否仍在解析中 */
+  const isProjectParsing = (projectId: string) => {
+    const proj = projects.find((p) => p.id === projectId);
+    if (!proj) return false;
+    if (proj.status === "parsing") return true;
+    return proj.files.some(
+      (f) => f.status === "uploading" || f.status === "parsing"
+    );
+  };
+
   /**
    * 触发一个长任务（挑战质询 / 事实交叉验证），右侧栏的任务卡片会实时显示进度，
    * 完成后由 ticker 把 resultBlocks 注入到对话流。
@@ -376,6 +429,7 @@ function App() {
     const intent = detectIntent(text);
 
     if (intent === "challenge" || intent === "fact-check") {
+      // 上层 handleSend / handleSendFromHome 已经做过 parsing 拦截，到这里直接启动
       startTask(intent, conversationId, projectId, text);
       return;
     }
@@ -415,12 +469,43 @@ function App() {
     }, 700);
   };
 
-  /** 项目主页输入：先打开/创建草稿对话，再发送首条消息 */
+  /**
+   * 项目主页输入：先识别意图。若是任务类输入且项目正在解析，先弹窗；
+   * 用户选「等待」时不会创建草稿对话，也不会写入用户消息。
+   * 其他情况按原行为：先打开/创建草稿对话，再发送首条消息。
+   */
   const handleSendFromHome = (
     text: string,
     attachments: Array<{ name: string; size: string; kind: FileKind }>
   ) => {
-    const convId = openOrCreateDraftFor(currentProjectId);
+    const projectId = currentProjectId;
+    const trimmed = text.trim();
+
+    if (trimmed.length > 0) {
+      const intent = detectIntent(text);
+      if (
+        (intent === "challenge" || intent === "fact-check") &&
+        isProjectParsing(projectId)
+      ) {
+        const userMsg: ChatMessage = {
+          id: uid("m"),
+          role: "user",
+          text,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          createdAt: new Date().toISOString(),
+        };
+        setPendingTask({
+          kind: intent,
+          conversationId: null, // 「继续」时再 openOrCreateDraftFor
+          projectId,
+          userQuery: text,
+          userMsg,
+        });
+        return;
+      }
+    }
+
+    const convId = openOrCreateDraftFor(projectId);
     sendInConversation(convId, text, attachments);
   };
 
@@ -429,6 +514,33 @@ function App() {
     attachments: Array<{ name: string; size: string; kind: FileKind }>
   ) => {
     if (!currentConversationId) return;
+    const projectId = currentProjectId;
+    const trimmed = text.trim();
+
+    if (trimmed.length > 0) {
+      const intent = detectIntent(text);
+      if (
+        (intent === "challenge" || intent === "fact-check") &&
+        isProjectParsing(projectId)
+      ) {
+        const userMsg: ChatMessage = {
+          id: uid("m"),
+          role: "user",
+          text,
+          attachments: attachments.length > 0 ? attachments : undefined,
+          createdAt: new Date().toISOString(),
+        };
+        setPendingTask({
+          kind: intent,
+          conversationId: currentConversationId,
+          projectId,
+          userQuery: text,
+          userMsg,
+        });
+        return;
+      }
+    }
+
     sendInConversation(currentConversationId, text, attachments);
   };
 
@@ -445,6 +557,18 @@ function App() {
       mode: pickedMode,
       createdAt: new Date().toISOString(),
     };
+
+    if (isProjectParsing(currentProjectId)) {
+      setPendingTask({
+        kind: pickedMode,
+        conversationId: currentConversationId,
+        projectId: currentProjectId,
+        userQuery: originalQuery,
+        userMsg,
+      });
+      return;
+    }
+
     appendMessage(currentConversationId, userMsg);
     startTask(pickedMode, currentConversationId, currentProjectId, originalQuery);
   };
@@ -515,37 +639,6 @@ function App() {
       }, 2200);
     }
     setView("project-home");
-  };
-
-  const handleRecalculate = () => {
-    const targetProjectId = currentProjectId;
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === targetProjectId
-          ? { ...p, status: "parsing", updatedAt: new Date().toISOString() }
-          : p
-      )
-    );
-    setTimeout(() => {
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === targetProjectId
-            ? { ...p, status: "parsed", updatedAt: new Date().toISOString() }
-            : p
-        )
-      );
-    }, 6000);
-
-    if (!currentConversationId) return;
-    const sysMsg: ChatMessage = {
-      id: uid("m"),
-      role: "system",
-      text: `分析评估已启动（${currentProject.riskTolerance} · ${
-        currentProject.stage === "early-growth" ? "早期/成长期" : "中后期/Pre-IPO"
-      }），将基于最新偏好与知识库重新生成事实验证与质询清单。期间您可以继续提问，结果就绪后会自动归档。`,
-      createdAt: new Date().toISOString(),
-    };
-    appendMessage(currentConversationId, sysMsg);
   };
 
   const handleUpdateFiles = (files: KnowledgeFile[]) => {
@@ -730,6 +823,10 @@ function App() {
             <ProjectHome
               project={currentProject}
               conversations={conversations}
+              homeTab={homeTab}
+              onHomeTabChange={setHomeTab}
+              projectReports={projectReports}
+              onOpenReport={handleOpenReport}
               settingsOpen={settingsOpen}
               onToggleSettings={() => setSettingsOpen((v) => !v)}
               onRenameProject={renameProject}
@@ -765,7 +862,7 @@ function App() {
                 onViewSource={setViewerAnchor}
                 onClarificationSubmit={handleClarificationSubmit}
                 onExport={handleExport}
-                onOpenReport={(b) => setOpenReport(b)}
+                onOpenReport={(b) => handleOpenReport(b as ReportBlock)}
                 onModePick={handleModePick}
                 hasKnowledge={currentProject.files.length > 0}
                 newReportMessageIds={newReportMsgIds}
@@ -812,16 +909,51 @@ function App() {
               project={currentProject}
               runningTasks={currentProjectRunningTasks}
               onUpdate={updateProject}
-              onRecalculate={handleRecalculate}
               onOpenTaskConversation={handleOpenConversation}
             />
           </div>
         )}
 
+        <ParsingGateDialog
+          open={pendingTask !== null}
+          taskKind={pendingTask?.kind ?? "challenge"}
+          projectName={
+            pendingTask
+              ? projects.find((p) => p.id === pendingTask.projectId)?.name
+              : currentProject?.name
+          }
+          onCancel={() => setPendingTask(null)}
+          onContinue={() => {
+            if (!pendingTask) return;
+            const t = pendingTask;
+            setPendingTask(null);
+            // 若来自项目主页首次提问，此时才创建草稿对话；否则使用已有对话
+            const convId = t.conversationId ?? openOrCreateDraftFor(t.projectId);
+            if (t.userMsg) {
+              appendMessage(convId, t.userMsg);
+              // 草稿对话或仍叫「新对话」时，用首条 user 消息作为标题
+              setConversations((prev) =>
+                prev.map((c) => {
+                  if (c.id !== convId) return c;
+                  if (!c.isDraft && c.title !== "新对话") return c;
+                  const nextTitle =
+                    t.userQuery.trim().slice(0, 24) || c.title;
+                  return { ...c, title: nextTitle, isDraft: false };
+                })
+              );
+            }
+            startTask(t.kind, convId, t.projectId, t.userQuery);
+          }}
+        />
+
         <QuoteViewer anchor={viewerAnchor} onClose={() => setViewerAnchor(null)} />
         <ReportDrawer
           block={openReport}
-          onClose={() => setOpenReport(null)}
+          meta={openReportMeta}
+          onClose={() => {
+            setOpenReport(null);
+            setOpenReportMeta(null);
+          }}
           onViewSource={setViewerAnchor}
           onDownload={handleExport}
         />

@@ -1,47 +1,79 @@
 import { useEffect, useState } from "react";
 
 import { ChallengeListCard } from "@/src/components/chat/ChallengeListCard";
+import { EnterpriseAnalysisCard } from "@/src/components/chat/EnterpriseAnalysisCard";
 import { FactVerificationCard } from "@/src/components/chat/FactVerificationCard";
 import { ValuationCard } from "@/src/components/chat/ValuationCard";
 import { Button } from "@/src/components/ui/button";
 import { SFIcon } from "@/src/components/ui/sf-icon";
+import type { ReportBlock } from "@/src/lib/project-reports";
 import {
+  IconBuilding,
   IconCalculator,
   IconChecklist,
   IconClose,
   IconDownload,
   IconFactCheck,
 } from "@/src/lib/icons";
-import { cn } from "@/src/lib/utils";
-import type { AssistantBlock, SourceAnchor } from "@/src/types";
+import { cn, formatRelative } from "@/src/lib/utils";
+import type { SourceAnchor } from "@/src/types";
+
+export interface ReportDrawerMeta {
+  sourceLabel?: string;
+  createdAt?: string;
+}
 
 interface ReportDrawerProps {
-  block: AssistantBlock | null;
+  block: ReportBlock | null;
+  meta?: ReportDrawerMeta | null;
   onClose: () => void;
   onViewSource: (anchor: SourceAnchor) => void;
-  /** 点击「下载」按钮 → 由父组件统一处理（Markdown / Word 导出） */
   onDownload?: () => void;
 }
 
-const meta = {
-  "fact-verification": { eyebrow: "事实交叉验证 · Fact Verification", icon: IconFactCheck },
-  "challenge-list":    { eyebrow: "挑战质询清单 · Challenge List",    icon: IconChecklist  },
-  valuation:           { eyebrow: "估值平行测算 · Valuation",          icon: IconCalculator },
+const headerMeta = {
+  "fact-verification": {
+    eyebrow: "事实交叉验证 · Fact Verification",
+    icon: IconFactCheck,
+    detailHint:
+      "完整报告包含多源数据对照表、高优先级偏差展开说明与证据锚点，可点击引用跳转原文。",
+  },
+  "challenge-list": {
+    eyebrow: "挑战质询清单 · Challenge List",
+    icon: IconChecklist,
+    detailHint:
+      "完整报告按 P0–P3 列出灵魂质询条目，含底层矛盾、证据底座与条款 / 对赌建议。",
+  },
+  valuation: {
+    eyebrow: "估值平行测算 · Valuation",
+    icon: IconCalculator,
+    detailHint: "完整报告展示多种测算方法、关键假设与综合估值区间，不提供单一推荐值。",
+  },
+  "enterprise-analysis": {
+    eyebrow: "企业分析评估 · Enterprise Assessment",
+    icon: IconBuilding,
+    detailHint:
+      "基于最新企业信息、风险口径与知识库全量重算，输出分维度评估与关键结论。",
+  },
 } as const;
 
 export function ReportDrawer({
   block,
+  meta,
   onClose,
   onViewSource,
   onDownload,
 }: ReportDrawerProps) {
   const open = block !== null;
 
-  // 关闭动画期间继续显示最后一次的报告内容，避免抽屉滑出时画面瞬间变空
-  const [lastBlock, setLastBlock] = useState<AssistantBlock | null>(null);
+  const [lastBlock, setLastBlock] = useState<ReportBlock | null>(null);
+  const [lastMeta, setLastMeta] = useState<ReportDrawerMeta | null>(null);
   useEffect(() => {
-    if (block) setLastBlock(block);
-  }, [block]);
+    if (block) {
+      setLastBlock(block);
+      if (meta) setLastMeta(meta);
+    }
+  }, [block, meta]);
 
   useEffect(() => {
     if (!open) return;
@@ -52,16 +84,9 @@ export function ReportDrawer({
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  const renderBlock = block ?? lastBlock;
-  const showable =
-    renderBlock &&
-    (renderBlock.kind === "fact-verification" ||
-      renderBlock.kind === "challenge-list" ||
-      renderBlock.kind === "valuation")
-      ? renderBlock
-      : null;
-
-  const headerMeta = showable ? meta[showable.kind] : null;
+  const showable = block ?? lastBlock;
+  const displayMeta = meta ?? lastMeta;
+  const hm = showable ? headerMeta[showable.kind] : null;
 
   return (
     <div
@@ -86,24 +111,22 @@ export function ReportDrawer({
         )}
         role="dialog"
         aria-modal="true"
-        aria-label={showable?.kind === "fact-verification" ? showable.title : undefined}
+        aria-label={showable?.title}
       >
-        {showable && headerMeta && (
+        {showable && hm && (
           <>
             <div className="flex items-start justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4">
               <div className="min-w-0">
                 <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
-                  <SFIcon icon={headerMeta.icon} size={11} />
-                  {headerMeta.eyebrow}
+                  <SFIcon icon={hm.icon} size={11} />
+                  {hm.eyebrow}
                 </div>
                 <h2 className="mt-1.5 truncate text-[17px] font-semibold leading-snug text-gray-900">
                   {showable.title}
                 </h2>
-                {"summary" in showable && (
-                  <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-gray-500">
-                    {showable.summary}
-                  </p>
-                )}
+                <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-gray-500">
+                  {showable.summary}
+                </p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {onDownload && (
@@ -130,6 +153,12 @@ export function ReportDrawer({
             </div>
 
             <div className="thin-scroll min-h-0 flex-1 overflow-y-auto bg-[#fafafa] px-6 py-6">
+              <ReportDetailMeta
+                sourceLabel={displayMeta?.sourceLabel}
+                createdAt={displayMeta?.createdAt}
+                detailHint={hm.detailHint}
+              />
+
               {showable.kind === "fact-verification" && (
                 <FactVerificationCard
                   title={showable.title}
@@ -160,10 +189,53 @@ export function ReportDrawer({
                   onViewSource={onViewSource}
                 />
               )}
+              {showable.kind === "enterprise-analysis" && (
+                <EnterpriseAnalysisCard
+                  block={showable}
+                  onViewSource={onViewSource}
+                />
+              )}
             </div>
           </>
         )}
       </aside>
+    </div>
+  );
+}
+
+function ReportDetailMeta({
+  sourceLabel,
+  createdAt,
+  detailHint,
+}: {
+  sourceLabel?: string;
+  createdAt?: string;
+  detailHint: string;
+}) {
+  return (
+    <div className="mb-5 rounded-xl border border-gray-200 bg-white px-4 py-3.5">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400">
+        报告详情
+      </p>
+      <p className="mt-1.5 text-[12.5px] leading-relaxed text-gray-600">{detailHint}</p>
+      {(sourceLabel || createdAt) && (
+        <dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 border-t border-gray-100 pt-3 text-[11.5px]">
+          {sourceLabel && (
+            <div>
+              <dt className="text-gray-400">来源</dt>
+              <dd className="font-medium text-gray-800">{sourceLabel}</dd>
+            </div>
+          )}
+          {createdAt && (
+            <div>
+              <dt className="text-gray-400">生成时间</dt>
+              <dd className="font-medium text-gray-800">
+                {formatRelative(createdAt)}
+              </dd>
+            </div>
+          )}
+        </dl>
+      )}
     </div>
   );
 }

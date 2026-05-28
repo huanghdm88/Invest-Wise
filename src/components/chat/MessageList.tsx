@@ -18,6 +18,7 @@ import {
   IconThumbUp,
   IconUser,
 } from "@/src/lib/icons";
+import { isReportBlock } from "@/src/lib/project-reports";
 import { cn } from "@/src/lib/utils";
 import type { AssistantBlock, ChatMessage, SourceAnchor, WorkMode } from "@/src/types";
 
@@ -149,12 +150,7 @@ export function MessageList({
             );
           }
 
-          const hasReportBlock = msg.blocks?.some(
-            (b) =>
-              b.kind === "fact-verification" ||
-              b.kind === "challenge-list" ||
-              b.kind === "valuation"
-          );
+          const hasReportBlock = msg.blocks?.some((b) => isReportBlock(b));
           const isNewReport = newReportMessageIds?.has(msg.id) ?? false;
 
           return (

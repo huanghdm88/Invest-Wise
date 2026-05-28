@@ -685,7 +685,7 @@ export const mockConversations: Conversation[] = [
   {
     id: "conv-aurora-route",
     projectId: "proj-aurora",
-    title: "项目整体怎么样（待确认）",
+    title: "项目整体怎么样",
     messages: routeAmbiguousMessages,
     createdAt: "2026-05-12T09:28:00+08:00",
     updatedAt: "2026-05-12T09:28:35+08:00",

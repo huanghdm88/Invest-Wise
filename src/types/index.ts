@@ -167,6 +167,25 @@ export type AssistantBlock =
       citations?: SourceAnchor[];
     }
   | {
+      /** 企业分析评估报告：偏好 / 知识库变更后全量重算产出 */
+      kind: "enterprise-analysis";
+      title: string;
+      summary: string;
+      /** 综合风险等级 */
+      overallLevel: Priority;
+      /** 分维度评估 */
+      dimensions: Array<{
+        key: string;
+        label: string;
+        level: Priority;
+        finding: string;
+        recommendation: string;
+      }>;
+      /** 关键结论（条款式） */
+      highlights: string[];
+      citations?: SourceAnchor[];
+    }
+  | {
       /**
        * 分析终止卡片：当批量上传的资料缺乏关键信息点（如缺审计 / 缺议案 / 缺财务底稿）时，
        * Agent 主动终止分析并提示用户补传材料。卡片自带「快速上传」入口。

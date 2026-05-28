@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { ChatComposer } from "@/src/components/chat/ChatComposer";
+import { ReportSummaryCard } from "@/src/components/chat/ReportSummaryCard";
 import { AnalyzingBadge } from "@/src/components/ui/analyzing-badge";
 import { Button } from "@/src/components/ui/button";
 import { Input } from "@/src/components/ui/input";
@@ -24,6 +25,7 @@ import {
   isListedConversation,
   isProjectAnalyzing,
 } from "@/src/lib/utils";
+import type { ProjectReportEntry, ReportBlock } from "@/src/lib/project-reports";
 import type {
   Conversation,
   FileKind,
@@ -31,9 +33,20 @@ import type {
   Project,
 } from "@/src/types";
 
+export type ProjectHomeTab = "conversations" | "reports" | "knowledge";
+
 interface ProjectHomeProps {
   project: Project;
   conversations: Conversation[];
+  /** 受控 Tab（默认展示历史对话） */
+  homeTab: ProjectHomeTab;
+  onHomeTabChange: (tab: ProjectHomeTab) => void;
+  /** 项目下所有对话沉淀的报告 */
+  projectReports: ProjectReportEntry[];
+  onOpenReport: (
+    block: ReportBlock,
+    meta?: { sourceLabel?: string; createdAt?: string }
+  ) => void;
   /** 右侧栏开合状态（用于在项目主页也能折叠右侧栏） */
   settingsOpen: boolean;
   onToggleSettings: () => void;
@@ -50,11 +63,13 @@ interface ProjectHomeProps {
   ) => void;
 }
 
-type HomeTab = "conversations" | "knowledge";
-
 export function ProjectHome({
   project,
   conversations,
+  homeTab,
+  onHomeTabChange,
+  projectReports,
+  onOpenReport,
   settingsOpen,
   onToggleSettings,
   onRenameProject,
@@ -67,7 +82,8 @@ export function ProjectHome({
 }: ProjectHomeProps) {
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(project.name);
-  const [tab, setTab] = useState<HomeTab>("conversations");
+  const tab = homeTab;
+  const setTab = onHomeTabChange;
   const [renamingConvId, setRenamingConvId] = useState<string | null>(null);
   const [convDraft, setConvDraft] = useState("");
 
@@ -183,10 +199,10 @@ export function ProjectHome({
           onStop={() => {}}
         />
 
-        {/* —— Tabs：历史对话 / 项目知识库 —— */}
+        {/* —— Tabs：历史对话 / 历史报告 / 项目知识库 —— */}
         <Tabs
           value={tab}
-          onValueChange={(v) => setTab(v as HomeTab)}
+          onValueChange={(v) => setTab(v as ProjectHomeTab)}
           className="mt-6 px-4"
         >
           <TabsList
@@ -201,6 +217,17 @@ export function ProjectHome({
               {listedConvs.length > 0 && (
                 <span className="text-[11px] font-normal text-gray-400">
                   · {listedConvs.length}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger
+              value="reports"
+              className="inline-flex items-center gap-1 rounded-full border border-transparent bg-transparent px-3.5 py-1 text-[13px] font-medium text-gray-400 shadow-none transition-colors hover:text-gray-600 data-[state=active]:border-gray-200 data-[state=active]:bg-gray-100 data-[state=active]:text-gray-900 data-[state=active]:shadow-none"
+            >
+              <span>历史报告</span>
+              {projectReports.length > 0 && (
+                <span className="text-[11px] font-normal text-gray-400">
+                  · {projectReports.length}
                 </span>
               )}
             </TabsTrigger>
@@ -357,9 +384,48 @@ export function ProjectHome({
             )}
           </TabsContent>
 
+          {/* 历史报告 */}
+          <TabsContent value="reports" className="mt-4">
+            {projectReports.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-10 text-center">
+                <p className="text-[13px] font-medium text-gray-700">
+                  暂无历史报告
+                </p>
+                <p className="mt-1 text-[11.5px] text-gray-500">
+                  在对话中生成事实验证、挑战质询或估值报告后，将自动归档至此。
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {projectReports.map((entry) => {
+                  const sourceLabel =
+                    entry.conversationTitle ?? "对话";
+                  return (
+                    <li key={entry.id}>
+                      <ReportSummaryCard
+                        block={entry.block}
+                        sourceLabel={sourceLabel}
+                        createdAt={entry.createdAt}
+                        onOpen={() =>
+                          onOpenReport(entry.block, {
+                            sourceLabel,
+                            createdAt: entry.createdAt,
+                          })
+                        }
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </TabsContent>
+
           {/* 项目知识库 */}
           <TabsContent value="knowledge" className="mt-4">
-            <KnowledgePanel files={project.files} onUpdateFiles={onUpdateFiles} />
+            <KnowledgePanel
+              files={project.files}
+              onUpdateFiles={onUpdateFiles}
+            />
           </TabsContent>
         </Tabs>
       </div>
