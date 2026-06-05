@@ -12,7 +12,7 @@ interface LoginPageProps {
 
 const kpis = [
   { kpi: "5 大维度", label: "行业 / 团队 / 产品 / 财务 / 合规" },
-  { kpi: "4 级优先级", label: "P0 否决 → P3 噪音" },
+  { kpi: "5 级风险", label: "R1 低风险 → R5 高风险" },
   { kpi: "3 风格档位", label: "国资防守 / 稳健均衡 / 激进创投" },
   { kpi: "100% 溯源", label: "页码 + 段落 · 可追溯" },
 ];

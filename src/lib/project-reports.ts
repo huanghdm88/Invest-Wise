@@ -8,7 +8,8 @@ export type ReportBlock = Extract<
       | "fact-verification"
       | "challenge-list"
       | "valuation"
-      | "enterprise-analysis";
+      | "enterprise-analysis"
+      | "diligence-report";
   }
 >;
 
@@ -19,7 +20,8 @@ export function isReportBlock(
     block.kind === "fact-verification" ||
     block.kind === "challenge-list" ||
     block.kind === "valuation" ||
-    block.kind === "enterprise-analysis"
+    block.kind === "enterprise-analysis" ||
+    block.kind === "diligence-report"
   );
 }
 

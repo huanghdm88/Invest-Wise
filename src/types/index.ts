@@ -1,5 +1,5 @@
-/** 优先级，对应 PRD § 4.d 严重性定义 */
-export type Priority = "P0" | "P1" | "P2" | "P3";
+/** 内容风险等级（金融领域 R1–R5 口径） */
+export type RiskLevel = "R1" | "R2" | "R3" | "R4" | "R5";
 
 /** 风险容忍度档位，PRD § 5.a 主动偏好输入 */
 export type RiskTolerance = "R1" | "R2" | "R3";
@@ -71,7 +71,7 @@ export interface FactCompare {
   reality: { source: string; value: string };
   /** 差异百分比，正数=高估 */
   delta?: string;
-  level: Priority;
+  level: RiskLevel;
   /** 偏差详情：仅在 delta ≠ 0 时填充，用于支撑卡片展开"为什么差"的说明 */
   deviationDetail?: {
     /** 差异成因，例如「合并口径口径未做内部抵销」 */
@@ -88,7 +88,7 @@ export interface FactCompare {
 /** 挑战质询：单条 */
 export interface ChallengeItem {
   id: string;
-  priority: Priority;
+  riskLevel: RiskLevel;
   title: string;
   /** 底层矛盾，加粗描述 */
   coreLogic: string;
@@ -97,6 +97,51 @@ export interface ChallengeItem {
   /** 行动建议（如降估值、加对赌） */
   actionAdvice: string[];
   category: "行业" | "团队" | "产品" | "财务" | "合规" | "估值";
+}
+
+/** 通用语义色调，用于风险/数据可视化的着色 */
+export type SemanticTone = "danger" | "warning" | "neutral" | "positive";
+
+/** 尽调复核报告：单个章节内的内容块 */
+export type DiligenceContent =
+  | { type: "paragraph"; text: string }
+  | { type: "bullets"; items: string[]; ordered?: boolean }
+  | { type: "callout"; tone: SemanticTone; title?: string; text: string }
+  | {
+      /** KPI 指标卡网格：关键数字型数据的可视化呈现 */
+      type: "stats";
+      items: Array<{ label: string; value: string; sub?: string; tone?: SemanticTone }>;
+    }
+  | {
+      /** 横向条形图：用于占比 / 对比类数字的可视化 */
+      type: "bars";
+      caption?: string;
+      items: Array<{
+        label: string;
+        /** 0–100 的相对长度 */
+        value: number;
+        /** 展示用文案，如 "85.26%" / "2.4 亿元" */
+        display: string;
+        tone?: SemanticTone;
+      }>;
+    }
+  | {
+      type: "table";
+      headers: string[];
+      rows: string[][];
+      /** 需要强调的列下标（从 0 开始） */
+      emphasizeCol?: number;
+    };
+
+/** 尽调复核报告：一个可折叠的大章节 */
+export interface DiligenceSection {
+  id: string;
+  title: string;
+  /** 章节风险色点（TOC 与标题用） */
+  tone?: SemanticTone;
+  /** 默认是否展开，默认 true */
+  defaultOpen?: boolean;
+  content: DiligenceContent[];
 }
 
 /** 反问数据补充表单字段 */
@@ -139,7 +184,7 @@ export type AssistantBlock =
   | {
       kind: "fact-verification";
       title: string;
-      level: Priority;
+      level: RiskLevel;
       summary: string;
       compares: FactCompare[];
       anchors: SourceAnchor[];
@@ -172,12 +217,12 @@ export type AssistantBlock =
       title: string;
       summary: string;
       /** 综合风险等级 */
-      overallLevel: Priority;
+      overallLevel: RiskLevel;
       /** 分维度评估 */
       dimensions: Array<{
         key: string;
         label: string;
-        level: Priority;
+        level: RiskLevel;
         finding: string;
         recommendation: string;
       }>;
@@ -201,8 +246,8 @@ export type AssistantBlock =
         label: string;
         /** 期望的文档分类（与 KnowledgeFile.category 同名） */
         requirement: NonNullable<KnowledgeFile["category"]>;
-        /** 严重等级：P0 缺则无法启动 / P1 关键缺失 / P2 影响精度 */
-        severity: Extract<Priority, "P0" | "P1" | "P2">;
+        /** 严重等级：R5 缺则无法启动 / R4 关键缺失 / R3 影响精度 */
+        severity: Extract<RiskLevel, "R3" | "R4" | "R5">;
         /** 一行补充说明，告诉用户为什么需要 */
         hint?: string;
       }>;
@@ -210,6 +255,38 @@ export type AssistantBlock =
       parsedSummary?: { parsed: number; total: number };
       /** 给到用户的可操作建议（条款式） */
       nextSteps?: string[];
+    }
+  | {
+      /**
+       * 尽调复核报告：对原始投决/尽调材料做独立复核后产出的长篇结构化报告。
+       * 支持快捷目录跳转、章节折叠、关键数字可视化、关键信息高亮与逐句引用溯源。
+       */
+      kind: "diligence-report";
+      title: string;
+      /** 标的公司名 */
+      company: string;
+      /** 执行摘要 */
+      summary: string;
+      /** 总体结论 */
+      verdict: {
+        /** 最终建议，如「建议暂缓」 */
+        recommendation: string;
+        /** 整体项目风险评级 */
+        riskLevel: RiskLevel;
+        /** 估值判断，如「偏高 / 安全边际不足」 */
+        valuation: string;
+      };
+      /** 顶部关键指标卡 */
+      metrics: Array<{
+        label: string;
+        value: string;
+        sub?: string;
+        tone?: SemanticTone;
+      }>;
+      /** 正文章节（每个章节可折叠） */
+      sections: DiligenceSection[];
+      /** 逐句引用，序号即正文中的 [^N] */
+      citations: SourceAnchor[];
     };
 
 export interface ChatMessage {

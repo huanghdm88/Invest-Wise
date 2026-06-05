@@ -4,6 +4,7 @@ import type {
   Conversation,
   RunningTask,
 } from "@/src/types";
+import { haizhiReportMessages } from "@/src/data/haizhi-report";
 
 /**
  * 演示子对话 - 围绕极光智算项目拆解为多条独立子对话：
@@ -37,7 +38,7 @@ const factVerificationMessages: ChatMessage[] = [
       {
         kind: "fact-verification",
         title: "营收与经营性现金流交叉验证",
-        level: "P1",
+        level: "R4",
         summary:
           "议案宣称的经营性现金流净额[^3]，与 FDD 底稿单体加总结果存在 15% 偏离[^4]；同时 LTM 营收口径在议案[^1]与审计报告[^2]之间基本一致，未发现量级跨越。投后估值数字在 BP[^5] 与增资协议[^6] 之间完全一致。",
         compares: [
@@ -46,12 +47,12 @@ const factVerificationMessages: ChatMessage[] = [
             claim: { source: "投决议案 V3 · P8[^1]", value: "1.82 亿元" },
             reality: { source: "财务审计报告 · P12[^2]", value: "1.79 亿元" },
             delta: "+1.6%",
-            level: "P3",
+            level: "R1",
             deviationDetail: {
               explanation:
                 "议案使用 1.82 亿元（含税口径），而审计报告披露的为不含税营业总收入 17,887 万元（1.79 亿元）；差异 1.6% 处于税金及附加合理区间，未发现实质性失真。",
               impact:
-                "对估值与 PS 计算影响极小（≤ 0.2×），属 P3 噪音级。",
+                "对估值与 PS 计算影响极小（≤ 0.2×），属 R1 低风险级。",
               recommendation: "保留原口径，在尽调备忘中加注「含税 / 不含税」披露口径说明即可。",
             },
           },
@@ -60,12 +61,12 @@ const factVerificationMessages: ChatMessage[] = [
             claim: { source: "投决议案 V3 · P9[^3]", value: "+ 2,840 万元" },
             reality: { source: "FDD 底稿 · 附注 4[^4]", value: "+ 2,415 万元" },
             delta: "+15.0%",
-            level: "P1",
+            level: "R4",
             deviationDetail: {
               explanation:
                 "议案披露的 2,840 万元来源于合并报表口径；FDD 底稿单体加总结果为 2,415 万元（母公司 1,902 + 子 A 396 + 子 B 117），425 万元差额未在附注中给出调节项说明。疑似将「关联方代付费用」回冲计入经营活动现金流。",
               impact:
-                "现金流真实质量被高估 15%，直接影响 VC 倒算法估值上限，应触发 P1 级条款重构（业绩补偿 / 现金回购对赌）。",
+                "现金流真实质量被高估 15%，直接影响 VC 倒算法估值上限，应触发 R4 级条款重构（业绩补偿 / 现金回购对赌）。",
               recommendation:
                 "要求公司在 1 周内提供合并 → 单体的现金流调节表，并就 425 万差异逐项说明；如未能说明，建议将估值上限下修 8% – 12%。",
               evidence: [
@@ -85,7 +86,7 @@ const factVerificationMessages: ChatMessage[] = [
             claim: { source: "BP · P22[^5]", value: "12.6 亿元" },
             reality: { source: "增资协议原件 · P3[^6]", value: "12.6 亿元" },
             delta: "0%",
-            level: "P3",
+            level: "R1",
           },
         ],
         anchors: [
@@ -215,7 +216,7 @@ const challengeMessages: ChatMessage[] = [
         items: [
           {
             id: "c-1",
-            priority: "P1",
+            riskLevel: "R4",
             title: "估值逻辑断层与退出风险",
             coreLogic:
               "项目方按 PS 6× 计算投前估值[^1] 隐含 NTM 增速 +85%；但 2024 全年人效仅 47.1 万元[^2]，远低于行业基准 75–82 万元，公司如何跨越产能瓶颈以支撑该退出估值的净利润要求？",
@@ -244,7 +245,7 @@ const challengeMessages: ChatMessage[] = [
           },
           {
             id: "c-2",
-            priority: "P1",
+            riskLevel: "R4",
             title: "底层模型 API 成本占比偏高 → 规模不经济",
             coreLogic:
               "Agent 服务每完成一笔自动化任务需调用 6.4 次 GPT-5.4 / Claude 4.6 推理；底层 API 成本占客单价 38%[^3]，毛利率结构脆弱。公司假设 2026 推理价格下降 40%[^4] 推动毛利至 55%，但缺乏合同 / 询价依据。",
@@ -273,7 +274,7 @@ const challengeMessages: ChatMessage[] = [
           },
           {
             id: "c-3",
-            priority: "P2",
+            riskLevel: "R3",
             title: "前五大客户占比 41%，存在单点依赖",
             coreLogic:
               "前五大客户合计贡献营收占比 41.2%[^5]，其中 TOP1 客户已签 2025 年延续协议但金额下降 39%[^5]，单一客户敞口对收入稳定性形成显性威胁。",
@@ -294,7 +295,7 @@ const challengeMessages: ChatMessage[] = [
           },
           {
             id: "c-4",
-            priority: "P2",
+            riskLevel: "R3",
             title: "团队基因匹配度待验证（销售型团队做底层 Agent 平台）",
             coreLogic:
               "核心三人创始团队中 2 位出身销售岗，CTO 履历[^6] 仅以「资深架构师」概称、未披露具体项目与时间区间，外部数据源中也未找到对应的 ML / Infra 背书。",
@@ -515,7 +516,7 @@ const challengePendingResultBlock: AssistantBlock = {
   items: [
     {
       id: "cp-1",
-      priority: "P1",
+      riskLevel: "R4",
       title: "CTO 履历背书缺位，技术决策权重存疑",
       coreLogic:
         "CTO 张某仅以「资深架构师」概称、未披露项目与年限；外部公开渠道无对应 ML / Infra 项目背书；销售背景的两位联创合计持有 62% 表决权，技术路径决策存在系统性偏差风险。",
@@ -537,7 +538,7 @@ const challengePendingResultBlock: AssistantBlock = {
     },
     {
       id: "cp-2",
-      priority: "P1",
+      riskLevel: "R4",
       title: "销售基因 vs 平台型产品执行节奏错配",
       coreLogic:
         "公司 2025 年 H1 新签 9 个客户中 7 个为定制项目（单客户毛利 < 25%），而 BP 描绘的是 PLG 模式（订阅毛利 65%）。在缺乏产品负责人的情况下，销售团队主导的路线极易在 12 个月内回到「人月单」模型，背离平台估值逻辑。",
@@ -558,7 +559,7 @@ const challengePendingResultBlock: AssistantBlock = {
     },
     {
       id: "cp-3",
-      priority: "P2",
+      riskLevel: "R3",
       title: "对单一基础模型的成本敞口未做对冲",
       coreLogic:
         "目前 88% 调用集中在 GPT-5.4，公司未引入路由层；若模型涨价 30% 或 SLA 下降，单笔订单毛利将由 20% 跌至 -3%。",
@@ -626,7 +627,7 @@ const analysisAbortedMessages: ChatMessage[] = [
             key: "audit-report",
             label: "2024 年度审计报告（含合并 / 单体）",
             requirement: "财务尽调",
-            severity: "P0",
+            severity: "R5",
             hint:
               "缺审计无法验证营收 / 现金流真实性，事实交叉验证模块将完全失效。",
           },
@@ -634,7 +635,7 @@ const analysisAbortedMessages: ChatMessage[] = [
             key: "fdd-workbook",
             label: "FDD 财务底稿（含口径调节表）",
             requirement: "财务尽调",
-            severity: "P0",
+            severity: "R5",
             hint:
               "FDD 是估值平行测算与对赌条款建议的最低输入，缺则估值模块无法运行。",
           },
@@ -642,7 +643,7 @@ const analysisAbortedMessages: ChatMessage[] = [
             key: "ic-memo",
             label: "投决议案 / IM（含估值与定价章节）",
             requirement: "投决议案",
-            severity: "P1",
+            severity: "R4",
             hint:
               "议案是 Agent 的「对照基线」，缺则只能基于 BP 表述自说自话，会降低挑战质询的针对性。",
           },
@@ -650,13 +651,13 @@ const analysisAbortedMessages: ChatMessage[] = [
             key: "ldd-report",
             label: "法律尽调备忘 LDD（含股权结构 / 重大合同）",
             requirement: "法律尽调",
-            severity: "P2",
+            severity: "R3",
             hint:
               "缺则无法判断对赌 / 反稀释 / 优先清算等条款的合规风险敞口，可在后续补传。",
           },
         ],
         nextSteps: [
-          "请补传以上 P0 / P1 资料后，Agent 会自动重启解析并恢复全部分析能力",
+          "请补传以上 R5 / R4 资料后，Agent 会自动重启解析并恢复全部分析能力",
           "如暂无审计报告，可先用「FDD 底稿 + 主合同」组合作为最小可行输入",
           "如确需仅基于 BP 做行业判断，请通过下方「快速上传」按钮明确告知 Agent 切换为「轻分析模式」",
         ],
@@ -713,6 +714,14 @@ export const mockConversations: Conversation[] = [
     messages: analysisAbortedMessages,
     createdAt: "2026-05-26T10:38:00+08:00",
     updatedAt: "2026-05-26T10:39:30+08:00",
+  },
+  {
+    id: "conv-haizhi-review",
+    projectId: "proj-haizhi",
+    title: "投资分析独立复核",
+    messages: haizhiReportMessages,
+    createdAt: "2026-05-31T17:00:00+08:00",
+    updatedAt: "2026-05-31T17:18:00+08:00",
   },
 ];
 

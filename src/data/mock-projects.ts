@@ -90,6 +90,59 @@ export const mockProjects: Project[] = [
       },
     ],
   },
+  /**
+   * 真实案例改编：海致科技 D 轮投资分析 —— 投研智能体对原始投决 / 尽调材料做独立复核，
+   * 产出「建议暂缓」的尽调复核报告。用于演示长篇结构化报告的富交互渲染。
+   */
+  {
+    id: "proj-haizhi",
+    name: "海致科技 D 轮",
+    industry: "数据智能 · 图数据库 / 知识图谱",
+    stage: "late-pre-ipo",
+    riskTolerance: "R2",
+    customInstruction:
+      "重点复核 2024E 收入/利润真实性（尤其 Q4 集中确收）、应收与存货资产质量、回购权与上市合规清理，以及 29.5 亿元投前估值对高倍数退出的敏感度。",
+    status: "parsed",
+    updatedAt: "2026-05-31T17:20:00+08:00",
+    files: [
+      {
+        id: "f-haizhi-1",
+        name: "海致科技-投决报告.pdf",
+        kind: "pdf",
+        size: "6.8 MB",
+        status: "indexed",
+        category: "投决议案",
+        uploadedAt: "2026-05-30T09:10:00+08:00",
+      },
+      {
+        id: "f-haizhi-2",
+        name: "海致科技-财务专项尽调报告（容诚）.pdf",
+        kind: "pdf",
+        size: "9.4 MB",
+        status: "indexed",
+        category: "财务尽调",
+        uploadedAt: "2026-05-30T09:12:30+08:00",
+      },
+      {
+        id: "f-haizhi-3",
+        name: "海致科技-法律尽调报告（海问）.pdf",
+        kind: "pdf",
+        size: "5.2 MB",
+        status: "indexed",
+        category: "法律尽调",
+        uploadedAt: "2026-05-30T09:14:10+08:00",
+      },
+      {
+        id: "f-haizhi-4",
+        name: "AtlasGraph-LDBC 基准测试审计摘要.pdf",
+        kind: "pdf",
+        size: "1.1 MB",
+        status: "indexed",
+        category: "其他",
+        uploadedAt: "2026-05-30T09:15:40+08:00",
+      },
+    ],
+  },
   {
     id: "proj-ocean",
     name: "海洋蓝智能 SaaS · A+ 轮",

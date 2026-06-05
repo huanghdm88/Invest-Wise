@@ -207,6 +207,7 @@ export function MessageList({
                     case "fact-verification":
                     case "challenge-list":
                     case "valuation":
+                    case "diligence-report":
                       return (
                         <div
                           key={i}

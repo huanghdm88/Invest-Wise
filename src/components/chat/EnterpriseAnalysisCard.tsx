@@ -29,7 +29,7 @@ export function EnterpriseAnalysisCard({
               <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
                 企业分析评估
               </span>
-              <PriorityBadge priority={block.overallLevel} size="sm" />
+              <PriorityBadge level={block.overallLevel} size="sm" />
             </div>
             <p className="mt-2 text-[13.5px] leading-relaxed text-gray-700">
               {block.citations && block.citations.length > 0 ? (
@@ -60,7 +60,7 @@ export function EnterpriseAnalysisCard({
                 <span className="text-[13px] font-semibold text-gray-900">
                   {d.label}
                 </span>
-                <PriorityBadge priority={d.level} size="sm" />
+                <PriorityBadge level={d.level} size="sm" />
               </div>
               <p className="mt-2 text-[12.5px] leading-relaxed text-gray-600">
                 {d.finding}

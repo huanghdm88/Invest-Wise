@@ -967,7 +967,7 @@ function buildGenericFactCheckBlock(query: string): AssistantBlock {
   return {
     kind: "fact-verification",
     title: "事实交叉验证（基于当前知识库口径）",
-    level: "P1",
+    level: "R4",
     summary: `已围绕「${query.trim().slice(0, 36) || "您的请求"}」对议案 / BP / FDD / 审计报告等多源材料做了关键数据交叉比对，命中若干差异点，详见下方对照。`,
     compares: [
       {
@@ -975,7 +975,7 @@ function buildGenericFactCheckBlock(query: string): AssistantBlock {
         claim: { source: "投决议案-V3.pdf p.7", value: "1.82 亿元" },
         reality: { source: "审计报告 p.23", value: "1.68 亿元" },
         delta: "+8.3%",
-        level: "P1",
+        level: "R4",
         deviationDetail: {
           explanation:
             "议案口径包含集团内部交易（约 1,400 万），审计报告做了内部抵销。",
@@ -989,7 +989,7 @@ function buildGenericFactCheckBlock(query: string): AssistantBlock {
         claim: { source: "BP_2026Q2.pptx p.14", value: "+3,100 万元" },
         reality: { source: "审计报告 p.36", value: "-1,250 万元" },
         delta: "+348%",
-        level: "P0",
+        level: "R5",
         deviationDetail: {
           explanation:
             "BP 将客户预付款计入经营性现金流；审计报告按准则将其归类为合同负债，未计入。",
@@ -1014,7 +1014,7 @@ function buildGenericChallengeBlock(query: string): AssistantBlock {
     items: [
       {
         id: "auto-c-1",
-        priority: "P1",
+        riskLevel: "R4",
         title: "核心假设缺乏外部数据支撑",
         coreLogic:
           "公司测算所依赖的关键假设（增速 / 毛利 / 客单价）目前主要来源于内部 BP，缺少行业研报或可比对标的交叉佐证。建议在条款层面加入「超出假设区间触发对赌」机制。",
@@ -1033,7 +1033,7 @@ function buildGenericChallengeBlock(query: string): AssistantBlock {
       },
       {
         id: "auto-c-2",
-        priority: "P2",
+        riskLevel: "R3",
         title: "团队基因与战略路径错配",
         coreLogic:
           "团队画像与战略路径之间存在明显错配，需要在投后协议层面建立纠偏机制（如关键岗位变更知会权、独立技术董事席位）。",

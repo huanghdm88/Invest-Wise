@@ -12,12 +12,13 @@ import {
   IconFactCheck,
   IconTarget,
 } from "@/src/lib/icons";
+import { isHighRisk, RISK_LEVEL_CONFIG } from "@/src/lib/risk-level";
 import { cn } from "@/src/lib/utils";
-import type { FactCompare, Priority, SourceAnchor } from "@/src/types";
+import type { FactCompare, RiskLevel, SourceAnchor } from "@/src/types";
 
 interface FactVerificationCardProps {
   title: string;
-  level: Priority;
+  level: RiskLevel;
   summary: string;
   compares: FactCompare[];
   anchors: SourceAnchor[];
@@ -38,14 +39,9 @@ function isZeroDelta(delta?: string) {
   return /^0(\.0+)?%$/.test(delta.trim());
 }
 
-/**
- * 按优先级返回偏差行的整体配色：
- *  - P0：红色（关键偏差）
- *  - P1：橙色（重要偏差）
- *  - P2+：仍用 slate（默认中性）
- */
-function levelTone(level: Priority, open: boolean) {
-  if (level === "P0") {
+/** 按 R 级风险返回偏差行配色：R5 / R4 高亮，R3 琥珀，R1 / R2 中性 */
+function levelTone(level: RiskLevel, open: boolean) {
+  if (level === "R5") {
     return {
       card: open ? "border-red-300 bg-red-50/40 shadow-sm" : "border-red-200 bg-red-50/20",
       toggleClosed: "bg-red-50/70 text-red-700 hover:bg-red-100 hover:text-red-800",
@@ -57,7 +53,7 @@ function levelTone(level: Priority, open: boolean) {
       detailLabel: "text-red-700",
     };
   }
-  if (level === "P1") {
+  if (level === "R4") {
     return {
       card: open
         ? "border-orange-300 bg-orange-50/40 shadow-sm"
@@ -69,6 +65,18 @@ function levelTone(level: Priority, open: boolean) {
       detailBg: "border-orange-100 bg-orange-50/50",
       indicatorBar: "bg-orange-500",
       detailLabel: "text-orange-700",
+    };
+  }
+  if (level === "R3") {
+    return {
+      card: open ? "border-amber-300 bg-amber-50/40 shadow-sm" : "border-amber-200 bg-amber-50/20",
+      toggleClosed: "bg-amber-50/70 text-amber-800 hover:bg-amber-100",
+      toggleOpen: "bg-amber-100/80 text-amber-900",
+      toggleIcon: open ? "text-amber-700" : "text-amber-500",
+      toggleChevron: "text-amber-500",
+      detailBg: "border-amber-100 bg-amber-50/50",
+      indicatorBar: "bg-amber-500",
+      detailLabel: "text-amber-800",
     };
   }
   return {
@@ -94,9 +102,9 @@ export function FactVerificationCard({
 }: FactVerificationCardProps) {
   const hasCitations = citations && citations.length > 0;
 
-  // 默认展开第一个 P0/P1 偏差，方便用户直接看到关键差异
+  // 默认展开第一个 R4/R5 偏差，方便用户直接看到关键差异
   const initialOpen = compares.findIndex(
-    (c) => !isZeroDelta(c.delta) && (c.level === "P0" || c.level === "P1")
+    (c) => !isZeroDelta(c.delta) && isHighRisk(c.level)
   );
   const [openIdx, setOpenIdx] = useState<number | null>(
     initialOpen >= 0 ? initialOpen : null
@@ -111,7 +119,7 @@ export function FactVerificationCard({
             <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">
               事实交叉验证
             </span>
-            <PriorityBadge priority={level} size="sm" />
+            <PriorityBadge level={level} size="sm" />
           </div>
           <h3 className="mt-1.5 text-base font-semibold text-slate-900">{title}</h3>
           <p className="mt-1 text-xs leading-relaxed text-slate-600">
@@ -128,8 +136,8 @@ export function FactVerificationCard({
               const zero = isZeroDelta(c.delta);
               const expandable = !zero && Boolean(c.deviationDetail);
               const open = openIdx === idx;
-              const highPriority = !zero && (c.level === "P0" || c.level === "P1");
-              const tone = levelTone(highPriority ? c.level : "P2", open);
+              const highRisk = !zero && isHighRisk(c.level);
+              const tone = levelTone(highRisk ? c.level : "R2", open);
               return (
                 <div
                   key={idx}
@@ -138,7 +146,7 @@ export function FactVerificationCard({
                     tone.card
                   )}
                 >
-                  {highPriority && (
+                  {highRisk && (
                     <span
                       className={cn(
                         "absolute inset-y-0 left-0 w-[3px]",
@@ -169,10 +177,7 @@ export function FactVerificationCard({
                       <div
                         className={cn(
                           "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold tabular-nums",
-                          c.level === "P0" && "border-red-200 bg-red-50 text-red-700",
-                          c.level === "P1" && "border-orange-200 bg-orange-50 text-orange-700",
-                          c.level === "P2" && "border-amber-200 bg-amber-50 text-amber-700",
-                          c.level === "P3" && "border-slate-200 bg-slate-50 text-slate-600"
+                          RISK_LEVEL_CONFIG[c.level].className
                         )}
                       >
                         <SFIcon icon={IconArrowRight} size={10} />
@@ -228,7 +233,7 @@ export function FactVerificationCard({
                       <DeviationRow
                         label="差异成因"
                         text={c.deviationDetail.explanation}
-                        labelClassName={highPriority ? tone.detailLabel : undefined}
+                        labelClassName={highRisk ? tone.detailLabel : undefined}
                         citations={citations}
                         onViewSource={onViewSource}
                       />
@@ -254,7 +259,7 @@ export function FactVerificationCard({
                           <p
                             className={cn(
                               "mb-1.5 text-[10px] font-semibold uppercase tracking-wider",
-                              highPriority ? tone.detailLabel : "text-slate-400"
+                              highRisk ? tone.detailLabel : "text-slate-400"
                             )}
                           >
                             关键证据锚点 · {c.deviationDetail.evidence.length} 条
@@ -311,7 +316,7 @@ function DeviationRow({
   label: string;
   text: string;
   tone?: "default" | "warning" | "action";
-  /** 当行需要随宿主优先级高亮时由外层传入（如 P0 红色 / P1 橙色） */
+  /** 当行需要随宿主 R 级风险高亮时由外层传入（如 R5 红色 / R4 橙色） */
   labelClassName?: string;
   citations?: SourceAnchor[];
   onViewSource: (anchor: SourceAnchor) => void;

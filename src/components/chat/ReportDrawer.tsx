@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { ChallengeListCard } from "@/src/components/chat/ChallengeListCard";
+import { DiligenceReportCard } from "@/src/components/chat/DiligenceReportCard";
 import { EnterpriseAnalysisCard } from "@/src/components/chat/EnterpriseAnalysisCard";
 import { FactVerificationCard } from "@/src/components/chat/FactVerificationCard";
 import { ValuationCard } from "@/src/components/chat/ValuationCard";
@@ -14,6 +15,7 @@ import {
   IconClose,
   IconDownload,
   IconFactCheck,
+  IconShieldAlert,
 } from "@/src/lib/icons";
 import { cn, formatRelative } from "@/src/lib/utils";
 import type { SourceAnchor } from "@/src/types";
@@ -36,13 +38,13 @@ const headerMeta = {
     eyebrow: "事实交叉验证 · Fact Verification",
     icon: IconFactCheck,
     detailHint:
-      "完整报告包含多源数据对照表、高优先级偏差展开说明与证据锚点，可点击引用跳转原文。",
+      "完整报告包含多源数据对照表、R4/R5 级偏差展开说明与证据锚点，可点击引用跳转原文。",
   },
   "challenge-list": {
     eyebrow: "挑战质询清单 · Challenge List",
     icon: IconChecklist,
     detailHint:
-      "完整报告按 P0–P3 列出灵魂质询条目，含底层矛盾、证据底座与条款 / 对赌建议。",
+      "完整报告按 R1–R5 风险等级列出灵魂质询条目，含底层矛盾、证据底座与条款 / 对赌建议。",
   },
   valuation: {
     eyebrow: "估值平行测算 · Valuation",
@@ -54,6 +56,12 @@ const headerMeta = {
     icon: IconBuilding,
     detailHint:
       "基于最新企业信息、风险口径与知识库全量重算，输出分维度评估与关键结论。",
+  },
+  "diligence-report": {
+    eyebrow: "尽调复核报告 · Diligence Review",
+    icon: IconShieldAlert,
+    detailHint:
+      "对原始投决 / 尽调材料做独立复核：左侧目录可快捷跳转，章节可折叠，关键数字以可视化呈现，引用悬停看来源、点击跳转原文。",
   },
 } as const;
 
@@ -106,7 +114,8 @@ export function ReportDrawer({
 
       <aside
         className={cn(
-          "absolute right-0 top-0 flex h-full w-[760px] max-w-[94vw] flex-col border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300",
+          "absolute right-0 top-0 flex h-full max-w-[96vw] flex-col border-l border-gray-200 bg-white shadow-2xl transition-transform duration-300",
+          showable?.kind === "diligence-report" ? "w-[1040px]" : "w-[760px]",
           open ? "translate-x-0" : "translate-x-full"
         )}
         role="dialog"
@@ -191,6 +200,12 @@ export function ReportDrawer({
               )}
               {showable.kind === "enterprise-analysis" && (
                 <EnterpriseAnalysisCard
+                  block={showable}
+                  onViewSource={onViewSource}
+                />
+              )}
+              {showable.kind === "diligence-report" && (
+                <DiligenceReportCard
                   block={showable}
                   onViewSource={onViewSource}
                 />

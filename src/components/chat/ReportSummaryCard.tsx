@@ -6,9 +6,11 @@ import {
   IconCalculator,
   IconChecklist,
   IconFactCheck,
+  IconShieldAlert,
 } from "@/src/lib/icons";
 import { cn, formatRelative } from "@/src/lib/utils";
-import type { AssistantBlock, Priority } from "@/src/types";
+import { isElevatedRisk, isHighRisk } from "@/src/lib/risk-level";
+import type { AssistantBlock, RiskLevel } from "@/src/types";
 
 type ReportBlock = Extract<
   AssistantBlock,
@@ -17,7 +19,8 @@ type ReportBlock = Extract<
       | "fact-verification"
       | "challenge-list"
       | "valuation"
-      | "enterprise-analysis";
+      | "enterprise-analysis"
+      | "diligence-report";
   }
 >;
 
@@ -37,20 +40,20 @@ interface SummaryConfig {
   eyebrow: string;
   icon: typeof IconFactCheck;
   accent: string; // tailwind classes for eyebrow accent
-  stats: Array<{ label: string; value: string; tone?: "default" | "p1" | "p2" | "neutral" }>;
-  level?: Priority;
+  stats: Array<{ label: string; value: string; tone?: "default" | "high" | "medium" | "neutral" }>;
+  level?: RiskLevel;
 }
 
 function buildConfig(block: ReportBlock): SummaryConfig {
   if (block.kind === "fact-verification") {
-    const p1Count = block.compares.filter((c) => c.level === "P1" || c.level === "P0").length;
+    const highCount = block.compares.filter((c) => isHighRisk(c.level)).length;
     return {
       eyebrow: "事实交叉验证",
       icon: IconFactCheck,
       accent: "text-sky-600",
       stats: [
         { label: "对比项", value: `${block.compares.length} 项` },
-        { label: "高优先级偏差", value: `${p1Count} 项`, tone: p1Count > 0 ? "p1" : "neutral" },
+        { label: "R4/R5 偏差", value: `${highCount} 项`, tone: highCount > 0 ? "high" : "neutral" },
         { label: "证据锚点", value: `${block.anchors.length} 条` },
       ],
       level: block.level,
@@ -58,24 +61,22 @@ function buildConfig(block: ReportBlock): SummaryConfig {
   }
 
   if (block.kind === "challenge-list") {
-    const p1 = block.items.filter((i) => i.priority === "P0" || i.priority === "P1").length;
-    const p2 = block.items.filter((i) => i.priority === "P2").length;
+    const high = block.items.filter((i) => isHighRisk(i.riskLevel)).length;
+    const medium = block.items.filter((i) => i.riskLevel === "R3").length;
     return {
       eyebrow: "挑战质询清单",
       icon: IconChecklist,
       accent: "text-violet-600",
       stats: [
         { label: "质询总数", value: `${block.items.length} 条` },
-        { label: "P0/P1", value: `${p1} 条`, tone: p1 > 0 ? "p1" : "neutral" },
-        { label: "P2", value: `${p2} 条`, tone: "p2" },
+        { label: "R4/R5", value: `${high} 条`, tone: high > 0 ? "high" : "neutral" },
+        { label: "R3", value: `${medium} 条`, tone: "medium" },
       ],
     };
   }
 
   if (block.kind === "enterprise-analysis") {
-    const p1 = block.dimensions.filter(
-      (d) => d.level === "P0" || d.level === "P1"
-    ).length;
+    const elevated = block.dimensions.filter((d) => isElevatedRisk(d.level)).length;
     return {
       eyebrow: "企业分析评估",
       icon: IconBuilding,
@@ -83,13 +84,27 @@ function buildConfig(block: ReportBlock): SummaryConfig {
       stats: [
         { label: "评估维度", value: `${block.dimensions.length} 项` },
         {
-          label: "P0/P1 维度",
-          value: `${p1} 项`,
-          tone: p1 > 0 ? "p1" : "neutral",
+          label: "R3+ 维度",
+          value: `${elevated} 项`,
+          tone: elevated > 0 ? "high" : "neutral",
         },
         { label: "关键结论", value: `${block.highlights.length} 条` },
       ],
       level: block.overallLevel,
+    };
+  }
+
+  if (block.kind === "diligence-report") {
+    return {
+      eyebrow: "尽调复核报告",
+      icon: IconShieldAlert,
+      accent: "text-rose-600",
+      stats: [
+        { label: "复核章节", value: `${block.sections.length} 章` },
+        { label: "最终建议", value: block.verdict.recommendation, tone: "high" },
+        { label: "引用来源", value: `${block.citations.length} 条` },
+      ],
+      level: block.verdict.riskLevel,
     };
   }
 
@@ -114,8 +129,8 @@ function extractRange(conclusion: string): string | null {
 const toneClass: Record<NonNullable<SummaryConfig["stats"][number]["tone"]>, string> = {
   default: "text-gray-900",
   neutral: "text-gray-500",
-  p1: "text-rose-600",
-  p2: "text-amber-600",
+  high: "text-rose-600",
+  medium: "text-amber-600",
 };
 
 export function ReportSummaryCard({
@@ -163,7 +178,7 @@ export function ReportSummaryCard({
             >
               {cfg.eyebrow}
             </span>
-            {cfg.level && <PriorityBadge priority={cfg.level} size="sm" />}
+            {cfg.level && <PriorityBadge level={cfg.level} size="sm" />}
           </div>
           {sourceLabel && (
             <span

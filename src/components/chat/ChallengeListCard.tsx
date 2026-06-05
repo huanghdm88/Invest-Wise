@@ -68,7 +68,7 @@ export function ChallengeListCard({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
-                      <PriorityBadge priority={item.priority} size="sm" />
+                      <PriorityBadge level={item.riskLevel} size="sm" />
                       <span
                         className={cn(
                           "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium",
