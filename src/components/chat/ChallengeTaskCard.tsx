@@ -4,6 +4,7 @@ import { SFIcon } from "@/src/components/ui/sf-icon";
 import {
   IconCalculator,
   IconChallenge,
+  IconClose,
   IconFactCheck,
   IconRefresh,
 } from "@/src/lib/icons";
@@ -19,6 +20,8 @@ interface ChallengeTaskCardProps {
   projectName?: string;
   /** 点击卡片可跳转到对应对话查看上下文 */
   onOpen?: () => void;
+  /** 用户在二次确认后取消该任务（移除任务 + 在对话中提示「任务已取消」） */
+  onCancel?: (task: RunningTask) => void;
   className?: string;
 }
 
@@ -87,12 +90,14 @@ export function ChallengeTaskCard({
   task,
   projectName,
   onOpen,
+  onCancel,
   className,
 }: ChallengeTaskCardProps) {
   const [now, setNow] = useState<number>(() => Date.now());
   const [shouldAnimate] = useState(
     () => new Date(task.startedAt).getTime() >= MODULE_LOADED_AT - 1500
   );
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -107,46 +112,106 @@ export function ChallengeTaskCard({
   const heading = projectName ? `${projectName} · ${meta.label}` : meta.label;
 
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       className={cn(
-        "block w-full rounded-2xl border px-3 py-2.5 text-left transition-shadow hover:shadow-sm",
+        "group relative w-full rounded-2xl border px-3 py-2.5 text-left transition-shadow hover:shadow-sm",
         meta.tone,
         shouldAnimate && "animate-task-card-reveal",
         className
       )}
     >
-      <div className="flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 truncate text-[12.5px] font-semibold text-gray-900">
-          <SFIcon icon={Icon} size={12} className="shrink-0 text-gray-700" />
-          <span className="truncate">{heading}</span>
-        </span>
-        <span className="shrink-0 text-[10.5px] font-medium text-amber-700">
-          {pct}%
-        </span>
-      </div>
+      <button
+        type="button"
+        onClick={onOpen}
+        className="block w-full text-left"
+        aria-label="查看任务对话"
+      >
+        <div className="flex items-center justify-between gap-2">
+          {/* 标题区：右侧预留 6 / hover 时让出 14 空间给 ✕ 按钮，避免与百分比/取消按钮重叠 */}
+          <span
+            className={cn(
+              "inline-flex min-w-0 items-center gap-1 truncate text-[12.5px] font-semibold text-gray-900",
+              onCancel ? "pr-1 group-hover:pr-6" : "pr-1"
+            )}
+          >
+            <SFIcon icon={Icon} size={12} className="shrink-0 text-gray-700" />
+            <span className="truncate">{heading}</span>
+          </span>
+          {/* 百分比常态展示在右上角；hover 时被 ✕ 按钮覆盖（淡出避免重叠） */}
+          <span
+            className={cn(
+              "shrink-0 text-[10.5px] font-medium tabular-nums text-amber-700 transition-opacity",
+              onCancel && "group-hover:opacity-0"
+            )}
+          >
+            {pct}%
+          </span>
+        </div>
 
-      <div className="mt-1.5 flex items-center gap-1 text-[11.5px] leading-relaxed text-gray-600">
-        <SFIcon
-          icon={IconRefresh}
-          size={10}
-          className="shrink-0 animate-spin text-amber-500"
-        />
-        <span className="line-clamp-1">{phase}</span>
-      </div>
+        <div className="mt-1.5 flex items-center gap-1 text-[11.5px] leading-relaxed text-gray-600">
+          <SFIcon
+            icon={IconRefresh}
+            size={10}
+            className="shrink-0 animate-spin text-amber-500"
+          />
+          <span className="line-clamp-1">{phase}</span>
+        </div>
 
-      <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/70">
-        <div
-          className="h-full bg-amber-500 transition-[width] duration-1000 ease-out"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
+        <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/70">
+          <div
+            className="h-full bg-amber-500 transition-[width] duration-1000 ease-out"
+            style={{ width: `${pct}%` }}
+          />
+        </div>
 
-      <div className="mt-1.5 flex items-center justify-between text-[10.5px] text-gray-500">
-        <span>已运行 {elapsed}</span>
-        <span>完成后将自动出现在对话流</span>
-      </div>
-    </button>
+        <div className="mt-1.5 flex items-center justify-between text-[10.5px] text-gray-500">
+          <span>已运行 {elapsed}</span>
+          <span>完成后将自动出现在对话流</span>
+        </div>
+      </button>
+
+      {onCancel && !confirmingCancel && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmingCancel(true);
+          }}
+          className="absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center rounded-md text-gray-400 opacity-0 transition-all hover:bg-white hover:text-rose-600 group-hover:opacity-100"
+          aria-label="取消任务"
+          title="取消任务"
+        >
+          <SFIcon icon={IconClose} size={12} />
+        </button>
+      )}
+
+      {confirmingCancel && (
+        <div className="mt-2.5 flex items-center justify-between gap-2 rounded-lg border border-rose-200 bg-rose-50/80 px-2.5 py-1.5 text-[11px] text-rose-800">
+          <span className="line-clamp-1">确认取消该任务？</span>
+          <div className="flex shrink-0 items-center gap-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setConfirmingCancel(false);
+              }}
+              className="rounded-md border border-rose-200 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-50"
+            >
+              保留
+            </button>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onCancel?.(task);
+              }}
+              className="rounded-md bg-rose-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-rose-700"
+            >
+              确认取消
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

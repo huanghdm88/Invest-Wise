@@ -143,6 +143,51 @@ export const mockProjects: Project[] = [
       },
     ],
   },
+  /**
+   * 真实案例改编：第四范式 B 轮 —— 投研智能体对投资备忘录与三份尽调材料做交叉验证，
+   * 产出 80 项主张的「一致 / 部分一致 / 证据不足 / 不一致」对照报告，
+   * 用于演示交叉验证场景下的卡片化对照与目录式长报告。
+   */
+  {
+    id: "proj-sifanshi",
+    name: "第四范式 B 轮",
+    industry: "AI · 企业级 AutoML / 决策系统",
+    stage: "early-growth",
+    riskTolerance: "R2",
+    customInstruction:
+      "重点复核投资备忘录主张与财务尽调（信永中和）、法律尽调（汉坤）口径一致性，尤其税务与控制权合规、VIE 上市障碍、ICP 证缺失，以及 A 轮 / A-1 轮投资金额、合同期间口径等数字与主体描述差异。",
+    status: "parsed",
+    updatedAt: "2026-06-04T14:18:00+08:00",
+    files: [
+      {
+        id: "f-sifanshi-1",
+        name: "第四范式 B 轮投资备忘录.pdf",
+        kind: "pdf",
+        size: "5.4 MB",
+        status: "indexed",
+        category: "投决议案",
+        uploadedAt: "2026-06-04T11:10:00+08:00",
+      },
+      {
+        id: "f-sifanshi-2",
+        name: "第四范式 财务尽调报告.pdf",
+        kind: "pdf",
+        size: "7.8 MB",
+        status: "indexed",
+        category: "财务尽调",
+        uploadedAt: "2026-06-04T11:11:30+08:00",
+      },
+      {
+        id: "f-sifanshi-3",
+        name: "第四范式 法律尽调报告.pdf",
+        kind: "pdf",
+        size: "6.1 MB",
+        status: "indexed",
+        category: "法律尽调",
+        uploadedAt: "2026-06-04T11:12:50+08:00",
+      },
+    ],
+  },
   {
     id: "proj-ocean",
     name: "海洋蓝智能 SaaS · A+ 轮",

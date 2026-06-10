@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/src/components/ui/button";
 import { AnalysisAbortedCard } from "@/src/components/chat/AnalysisAbortedCard";
@@ -10,14 +10,19 @@ import { SFIcon } from "@/src/components/ui/sf-icon";
 import {
   IconAuto,
   IconChallenge,
+  IconChevronDown,
+  IconChevronUp,
   IconDownload,
   IconFactCheck,
   IconFile,
+  IconFileSpreadsheet,
+  IconFileText,
   IconInfo,
   IconThumbDown,
   IconThumbUp,
   IconUser,
 } from "@/src/lib/icons";
+import type { FileKind } from "@/src/types";
 import { isReportBlock } from "@/src/lib/project-reports";
 import { cn } from "@/src/lib/utils";
 import type { AssistantBlock, ChatMessage, SourceAnchor, WorkMode } from "@/src/types";
@@ -61,6 +66,62 @@ const modeLabel: Record<WorkMode, string> = {
   "fact-check": "事实验证",
   challenge: "挑战质询",
 };
+
+const fileKindIconMap: Record<FileKind, typeof IconFile> = {
+  pdf: IconFileText,
+  word: IconFileText,
+  ppt: IconFileText,
+  excel: IconFileSpreadsheet,
+  other: IconFile,
+};
+
+/** 用户消息下方的附件标签条：单个直接展示；超过 3 个时收起 + 「+N」展开 */
+function UserAttachmentTags({
+  attachments,
+}: {
+  attachments: NonNullable<ChatMessage["attachments"]>;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const overflow = attachments.length > 3;
+  const visible = !overflow || expanded ? attachments : attachments.slice(0, 3);
+  const hiddenCount = overflow && !expanded ? attachments.length - 3 : 0;
+
+  return (
+    <div className="flex max-w-full flex-wrap justify-end gap-1.5">
+      {visible.map((a, i) => {
+        const Icon = fileKindIconMap[a.kind] ?? IconFile;
+        return (
+          <div
+            key={`${a.name}-${i}`}
+            className="inline-flex max-w-[220px] items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] shadow-sm"
+            title={`${a.name} · ${a.size}`}
+          >
+            <SFIcon icon={Icon} size={12} className="shrink-0 text-slate-400" />
+            <span className="truncate font-medium text-slate-700">{a.name}</span>
+          </div>
+        );
+      })}
+      {overflow && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-medium text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:text-slate-900"
+          aria-label={expanded ? "收起附件" : `展开剩余 ${hiddenCount} 个附件`}
+        >
+          {expanded ? (
+            <>
+              收起 <SFIcon icon={IconChevronUp} size={10} />
+            </>
+          ) : (
+            <>
+              +{hiddenCount} <SFIcon icon={IconChevronDown} size={10} />
+            </>
+          )}
+        </button>
+      )}
+    </div>
+  );
+}
 
 export function MessageList({
   messages,
@@ -129,17 +190,7 @@ export function MessageList({
                       </div>
                     )}
                     {msg.attachments && msg.attachments.length > 0 && (
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        {msg.attachments.map((a, i) => (
-                          <div
-                            key={i}
-                            className="inline-flex items-center gap-1 rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[10px]"
-                          >
-                            <SFIcon icon={IconFile} size={10} className="text-slate-400" />
-                            <span className="font-medium text-slate-700">{a.name}</span>
-                          </div>
-                        ))}
-                      </div>
+                      <UserAttachmentTags attachments={msg.attachments} />
                     )}
                   </div>
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-100 text-slate-500">

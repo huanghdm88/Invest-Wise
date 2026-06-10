@@ -81,15 +81,15 @@ export function ChatComposer({
           </div>
         )}
 
-        <div className="flex items-end gap-2 px-3 py-2.5">
+        <div className="flex items-center gap-2 px-3 py-2">
           <button
             type="button"
-            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
             onClick={() => fileInputRef.current?.click()}
             aria-label="上传文件"
             title="临时附件（沙盒）"
           >
-            <SFIcon icon={IconAttach} size={15} />
+            <SFIcon icon={IconAttach} size={16} />
           </button>
           <input
             ref={fileInputRef}
@@ -117,7 +117,7 @@ export function ChatComposer({
             }}
             placeholder="向 Agent 提问…"
             rows={1}
-            className="thin-scroll min-h-[40px] flex-1 resize-none bg-transparent px-1 py-2 text-sm text-gray-900 placeholder:text-[#CCCCCC] focus:outline-none"
+            className="thin-scroll h-9 max-h-[220px] min-h-[36px] flex-1 resize-none self-center bg-transparent px-1 py-1.5 text-sm leading-6 text-gray-900 placeholder:text-[#CCCCCC] focus:outline-none"
           />
 
           {generating ? (

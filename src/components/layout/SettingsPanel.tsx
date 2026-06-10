@@ -10,6 +10,8 @@ interface SettingsPanelProps {
   onUpdate: (next: Partial<Project>) => void;
   /** 点击任务卡片：跳转到任务对应的对话 */
   onOpenTaskConversation?: (conversationId: string) => void;
+  /** 用户在卡片上二次确认后取消任务 */
+  onCancelTask?: (task: RunningTask) => void;
 }
 
 export function SettingsPanel({
@@ -17,6 +19,7 @@ export function SettingsPanel({
   runningTasks,
   onUpdate,
   onOpenTaskConversation,
+  onCancelTask,
 }: SettingsPanelProps) {
   return (
     <aside className="relative flex h-full w-[320px] shrink-0 flex-col border-l border-[hsl(var(--border))] bg-[hsl(var(--card))]">
@@ -47,6 +50,7 @@ export function SettingsPanel({
                   task={task}
                   projectName={project.name}
                   onOpen={() => onOpenTaskConversation?.(task.conversationId)}
+                  onCancel={onCancelTask}
                 />
               ))}
             </div>

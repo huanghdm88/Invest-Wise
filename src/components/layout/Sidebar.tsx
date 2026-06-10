@@ -37,6 +37,9 @@ interface SidebarProps {
   onNewProject: () => void;
   onRenameProject: (id: string, newName: string) => void;
   onDeleteProject: (id: string) => void;
+  /** 对话重命名 / 删除（侧边栏与项目主页共用同一套行为） */
+  onRenameConversation: (id: string, newTitle: string) => void;
+  onDeleteConversation: (id: string) => void;
 }
 
 const PROJECT_VISIBLE_LIMIT = 4;
@@ -57,10 +60,16 @@ export function Sidebar({
   onNewProject,
   onRenameProject,
   onDeleteProject,
+  onRenameConversation,
+  onDeleteConversation,
 }: SidebarProps) {
   const [menuId, setMenuId] = useState<string | null>(null);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
+  /** 对话行的更多菜单 / 重命名 inline 编辑 */
+  const [convMenuId, setConvMenuId] = useState<string | null>(null);
+  const [convRenameId, setConvRenameId] = useState<string | null>(null);
+  const [convRenameDraft, setConvRenameDraft] = useState("");
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => new Set([currentProjectId]));
   const [showAllProjects, setShowAllProjects] = useState(false);
   const [expandedAllConvs, setExpandedAllConvs] = useState<Set<string>>(() => new Set());
@@ -91,12 +100,27 @@ export function Sidebar({
     const handler = (e: MouseEvent) => {
       if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         setMenuId(null);
+        setConvMenuId(null);
         setUserMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, []);
+
+  const beginConvRename = (c: Conversation) => {
+    setConvRenameId(c.id);
+    setConvRenameDraft(c.title);
+    setConvMenuId(null);
+  };
+
+  const commitConvRename = () => {
+    if (convRenameId && convRenameDraft.trim()) {
+      onRenameConversation(convRenameId, convRenameDraft.trim());
+    }
+    setConvRenameId(null);
+    setConvRenameDraft("");
+  };
 
   const beginRename = (p: Project) => {
     setRenameId(p.id);
@@ -347,34 +371,41 @@ export function Sidebar({
 
               {expanded && !renaming && projectConvs.length > 0 && (
                 <ul className="mb-1 mt-0.5 space-y-0.5">
-                  {visibleConvs.map((c) => {
-                    const activeConv = c.id === currentConversationId;
-                    const running = runningConversationIds?.has(c.id) ?? false;
-                    const unread = unreadConversationIds?.has(c.id) ?? false;
-                    const aborted = abortedConversationIds?.has(c.id) ?? false;
-                    return (
-                      <li key={c.id}>
-                        <button
-                          type="button"
-                          onClick={() => onOpenConversation(c.id)}
-                          className={cn(
-                            "flex w-full items-center gap-2 rounded-md py-1.5 pl-9 pr-2.5 text-left text-[13px] transition-colors",
-                            activeConv
-                              ? "bg-gray-100 text-gray-900"
-                              : "text-gray-700 hover:bg-gray-100"
-                          )}
-                          title={c.title}
-                        >
-                          <span className="line-clamp-1 flex-1">{c.title}</span>
-                          <ConvIndicator
-                            running={running}
-                            unread={unread}
-                            aborted={aborted}
-                          />
-                        </button>
-                      </li>
-                    );
-                  })}
+                  {visibleConvs.map((c) => (
+                    <ConvRow
+                      key={c.id}
+                      conv={c}
+                      indent
+                      active={c.id === currentConversationId}
+                      running={runningConversationIds?.has(c.id) ?? false}
+                      unread={unreadConversationIds?.has(c.id) ?? false}
+                      aborted={abortedConversationIds?.has(c.id) ?? false}
+                      menuOpen={convMenuId === c.id}
+                      renaming={convRenameId === c.id}
+                      renameDraft={convRenameDraft}
+                      onOpen={() => onOpenConversation(c.id)}
+                      onToggleMenu={() =>
+                        setConvMenuId(convMenuId === c.id ? null : c.id)
+                      }
+                      onBeginRename={() => beginConvRename(c)}
+                      onCommitRename={commitConvRename}
+                      onCancelRename={() => {
+                        setConvRenameId(null);
+                        setConvRenameDraft("");
+                      }}
+                      onChangeRenameDraft={setConvRenameDraft}
+                      onDelete={() => {
+                        setConvMenuId(null);
+                        if (
+                          confirm(
+                            `确定要删除对话「${c.title}」吗？此操作不可撤销。`
+                          )
+                        ) {
+                          onDeleteConversation(c.id);
+                        }
+                      }}
+                    />
+                  ))}
                   {hasMoreConvs && (
                     <li>
                       <button
@@ -419,34 +450,40 @@ export function Sidebar({
             最近
           </h2>
           <ul className="space-y-0.5">
-            {recentConversations.map((c) => {
-              const active = c.id === currentConversationId;
-              const running = runningConversationIds?.has(c.id) ?? false;
-              const unread = unreadConversationIds?.has(c.id) ?? false;
-              const aborted = abortedConversationIds?.has(c.id) ?? false;
-              return (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenConversation(c.id)}
-                    className={cn(
-                      "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors",
-                      active
-                        ? "bg-gray-100 text-gray-900"
-                        : "text-gray-700 hover:bg-gray-100"
-                    )}
-                    title={c.title}
-                  >
-                    <span className="line-clamp-1 flex-1">{c.title}</span>
-                    <ConvIndicator
-                      running={running}
-                      unread={unread}
-                      aborted={aborted}
-                    />
-                  </button>
-                </li>
-              );
-            })}
+            {recentConversations.map((c) => (
+              <ConvRow
+                key={c.id}
+                conv={c}
+                active={c.id === currentConversationId}
+                running={runningConversationIds?.has(c.id) ?? false}
+                unread={unreadConversationIds?.has(c.id) ?? false}
+                aborted={abortedConversationIds?.has(c.id) ?? false}
+                menuOpen={convMenuId === c.id}
+                renaming={convRenameId === c.id}
+                renameDraft={convRenameDraft}
+                onOpen={() => onOpenConversation(c.id)}
+                onToggleMenu={() =>
+                  setConvMenuId(convMenuId === c.id ? null : c.id)
+                }
+                onBeginRename={() => beginConvRename(c)}
+                onCommitRename={commitConvRename}
+                onCancelRename={() => {
+                  setConvRenameId(null);
+                  setConvRenameDraft("");
+                }}
+                onChangeRenameDraft={setConvRenameDraft}
+                onDelete={() => {
+                  setConvMenuId(null);
+                  if (
+                    confirm(
+                      `确定要删除对话「${c.title}」吗？此操作不可撤销。`
+                    )
+                  ) {
+                    onDeleteConversation(c.id);
+                  }
+                }}
+              />
+            ))}
           </ul>
         </>
       )}
@@ -654,6 +691,133 @@ function ConvIndicator({
     );
   }
   return null;
+}
+
+/**
+ * 单条对话行：项目展开列表 & 「最近」 复用同一份渲染。
+ * 提供 hover 出现的 ⋯ 操作菜单：重命名 / 删除（删除二次确认），重命名走 inline Input。
+ */
+function ConvRow({
+  conv,
+  indent = false,
+  active,
+  running,
+  unread,
+  aborted,
+  menuOpen,
+  renaming,
+  renameDraft,
+  onOpen,
+  onToggleMenu,
+  onBeginRename,
+  onCommitRename,
+  onCancelRename,
+  onChangeRenameDraft,
+  onDelete,
+}: {
+  conv: Conversation;
+  /** 在项目展开列表里左侧有 9px 缩进对齐折叠图标 */
+  indent?: boolean;
+  active: boolean;
+  running: boolean;
+  unread: boolean;
+  aborted: boolean;
+  menuOpen: boolean;
+  renaming: boolean;
+  renameDraft: string;
+  onOpen: () => void;
+  onToggleMenu: () => void;
+  onBeginRename: () => void;
+  onCommitRename: () => void;
+  onCancelRename: () => void;
+  onChangeRenameDraft: (v: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <li>
+      <div
+        className={cn(
+          "group/conv relative flex items-center rounded-md transition-colors",
+          active
+            ? "bg-gray-100 text-gray-900"
+            : "text-gray-700 hover:bg-gray-100"
+        )}
+      >
+        {renaming ? (
+          <div className={cn("w-full py-1", indent ? "pl-9 pr-2" : "px-2")}>
+            <Input
+              autoFocus
+              value={renameDraft}
+              onChange={(e) => onChangeRenameDraft(e.target.value)}
+              onBlur={onCommitRename}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+                if (e.key === "Escape") onCancelRename();
+              }}
+              className="h-7 text-[13px]"
+            />
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={onOpen}
+              className={cn(
+                "flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left text-[13px]",
+                indent ? "pl-9 pr-16" : "pl-2 pr-16"
+              )}
+              title={conv.title}
+            >
+              <span className="line-clamp-1 flex-1">{conv.title}</span>
+              <ConvIndicator
+                running={running}
+                unread={unread}
+                aborted={aborted}
+              />
+            </button>
+
+            <div
+              className={cn(
+                "absolute right-1 top-1/2 flex -translate-y-1/2 items-center gap-0.5 transition-opacity",
+                menuOpen
+                  ? "pointer-events-auto opacity-100"
+                  : "pointer-events-none opacity-0 group-hover/conv:pointer-events-auto group-hover/conv:opacity-100"
+              )}
+            >
+              <button
+                type="button"
+                className="rounded p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleMenu();
+                }}
+                aria-label="更多操作"
+                title="更多操作"
+              >
+                <SFIcon icon={IconMore} size={12} />
+              </button>
+            </div>
+
+            {menuOpen && (
+              <div className="absolute right-1 top-full z-20 mt-0.5 w-28 overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg">
+                <MenuButton
+                  icon={<SFIcon icon={IconRename} size={11} />}
+                  label="重命名"
+                  onClick={onBeginRename}
+                />
+                <MenuButton
+                  icon={<SFIcon icon={IconDelete} size={11} />}
+                  label="删除"
+                  danger
+                  onClick={onDelete}
+                />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </li>
+  );
 }
 
 function MenuButton({

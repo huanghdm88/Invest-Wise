@@ -5,6 +5,7 @@ import type {
   RunningTask,
 } from "@/src/types";
 import { haizhiReportMessages } from "@/src/data/haizhi-report";
+import { sifanshiReportMessages } from "@/src/data/sifanshi-report";
 
 /**
  * 演示子对话 - 围绕极光智算项目拆解为多条独立子对话：
@@ -722,6 +723,14 @@ export const mockConversations: Conversation[] = [
     messages: haizhiReportMessages,
     createdAt: "2026-05-31T17:00:00+08:00",
     updatedAt: "2026-05-31T17:18:00+08:00",
+  },
+  {
+    id: "conv-sifanshi-cross-check",
+    projectId: "proj-sifanshi",
+    title: "投资备忘录 ⇄ 尽调交叉验证",
+    messages: sifanshiReportMessages,
+    createdAt: "2026-06-04T14:00:00+08:00",
+    updatedAt: "2026-06-04T14:18:00+08:00",
   },
 ];
 

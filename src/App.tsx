@@ -361,15 +361,17 @@ function App() {
     userQuery: string
   ) => {
     const isChallenge = kind === "challenge";
-    const sysMsg: ChatMessage = {
+    // Agent 在对话流中先「描述即将启动的任务模块」，并同步发起任务（写入 runningTasks）
+    const describeText = isChallenge
+      ? "好的，我将为你启动「挑战质询」任务模块。该模块会调用行业研报对照与多文档交叉佐证能力，围绕投资逻辑、关键假设与执行风险生成投决会式的拷问清单。任务已开始执行，可在右侧任务栏实时查看进度，完成后我会在这里直接追加质询清单。"
+      : "好的，我将为你启动「事实交叉验证」任务模块。该模块会对议案 / BP / FDD / 审计报告等多源材料做关键数据交叉比对，定位口径差异与潜在偏差。任务已开始执行，可在右侧任务栏实时查看进度，完成后我会在这里直接追加偏差清单。";
+    const describeMsg: ChatMessage = {
       id: uid("m"),
-      role: "system",
-      text: isChallenge
-        ? "挑战质询任务已启动。该类任务涉及行业研报对照与多文档交叉佐证，预计耗时较长；右侧任务卡片将实时显示进度，完成后自动追加质询清单。"
-        : "事实交叉验证任务已启动。Agent 正在对议案 / BP / FDD / 审计报告等多源材料做关键数据交叉比对；右侧任务卡片将实时显示进度，完成后自动追加偏差清单。",
+      role: "assistant",
       createdAt: new Date().toISOString(),
+      blocks: [{ kind: "text", text: describeText }],
     };
-    appendMessage(conversationId, sysMsg);
+    appendMessage(conversationId, describeMsg);
 
     const resultBlock = isChallenge
       ? buildGenericChallengeBlock(userQuery)
@@ -744,6 +746,38 @@ function App() {
 
   // —— 长任务推进 ticker：每秒推进 progress，达 100 后注入结果到对话流 ——
   const taskCompletionRef = useRef<Set<string>>(new Set());
+
+  /**
+   * 用户在右侧任务卡片的二次确认弹层中确认取消正在执行的任务：
+   * 1) 从 runningTasks 中移除该任务（卡片立即消失）
+   * 2) 防止 ticker 之后误判该任务已完成而追加结果（taskCompletionRef 标记一下）
+   * 3) 在对应对话中追加一条 assistant 文本「任务已取消」，与「任务启动」的描述消息形成闭环
+   */
+  const handleCancelTask = useCallback(
+    (task: RunningTask) => {
+      taskCompletionRef.current.add(task.id);
+      setRunningTasks((prev) => prev.filter((t) => t.id !== task.id));
+      const kindLabel =
+        task.kind === "challenge"
+          ? "「挑战质询」"
+          : task.kind === "fact-check"
+            ? "「事实交叉验证」"
+            : "「估值平行测算」";
+      appendMessage(task.conversationId, {
+        id: uid("m"),
+        role: "assistant",
+        createdAt: new Date().toISOString(),
+        blocks: [
+          {
+            kind: "text",
+            text: `任务已取消：${kindLabel}任务模块已根据你的操作中止，未生成的中间结果不会写入对话。如需重新发起，直接在下方输入框继续提问即可。`,
+          },
+        ],
+      });
+    },
+    [appendMessage]
+  );
+
   useEffect(() => {
     if (runningTasks.length === 0) return;
     const id = window.setInterval(() => {
@@ -816,6 +850,8 @@ function App() {
           onNewProject={() => setView("new-project")}
           onRenameProject={renameProject}
           onDeleteProject={deleteProject}
+          onRenameConversation={renameConversation}
+          onDeleteConversation={deleteConversation}
         />
 
         <main className="relative flex min-w-0 flex-1 flex-col">
@@ -910,6 +946,7 @@ function App() {
               runningTasks={currentProjectRunningTasks}
               onUpdate={updateProject}
               onOpenTaskConversation={handleOpenConversation}
+              onCancelTask={handleCancelTask}
             />
           </div>
         )}

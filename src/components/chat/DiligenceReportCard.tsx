@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CitationsFooter } from "@/src/components/chat/CitationsFooter";
 import { CitedText } from "@/src/components/chat/CitedText";
 import { PriorityBadge } from "@/src/components/chat/PriorityBadge";
+import { VerificationCard } from "@/src/components/chat/VerificationCard";
 import { SFIcon } from "@/src/components/ui/sf-icon";
 import {
   IconChecklist,
@@ -271,9 +272,61 @@ function ContentRenderer({
         </div>
       );
 
+    case "verification-cards":
+      return (
+        <VerificationCardsBlock content={content} onView={onView} />
+      );
+
     default:
       return null;
   }
+}
+
+/** 「证据不足项 / 一致项」等长清单默认折叠；点击行标题展开 */
+function VerificationCardsBlock({
+  content,
+  onView,
+}: {
+  content: Extract<DiligenceContent, { type: "verification-cards" }>;
+  onView: (a: SourceAnchor) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(content.defaultCollapsed ?? false);
+  if (!content.caption) {
+    return (
+      <div className="space-y-2">
+        {content.items.map((it) => (
+          <VerificationCard key={it.index} item={it} onViewSource={onView} />
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={() => setCollapsed((v) => !v)}
+        className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-left text-[12px] font-medium text-slate-700 transition-colors hover:bg-slate-100"
+        aria-expanded={!collapsed}
+      >
+        <span>{content.caption}</span>
+        <SFIcon
+          icon={IconChevronDown}
+          size={12}
+          className={cn(
+            "text-slate-400 transition-transform",
+            !collapsed && "rotate-180"
+          )}
+        />
+      </button>
+      {!collapsed && (
+        <div className="space-y-2">
+          {content.items.map((it) => (
+            <VerificationCard key={it.index} item={it} onViewSource={onView} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 function SectionBlock({

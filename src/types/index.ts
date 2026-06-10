@@ -102,6 +102,36 @@ export interface ChallengeItem {
 /** 通用语义色调，用于风险/数据可视化的着色 */
 export type SemanticTone = "danger" | "warning" | "neutral" | "positive";
 
+/** 交叉验证条目的「分类」枚举，与原 HTML 报告的 cat-xxx 一一对应 */
+export type VerificationCategory =
+  | "财务数据"
+  | "募资"
+  | "法务合规"
+  | "客户数据"
+  | "业务数据"
+  | "市场行业"
+  | "团队治理";
+
+/** 交叉验证条目的「结论」枚举：一致 / 部分一致 / 不一致 / 证据不足 */
+export type VerificationVerdict = "一致" | "部分一致" | "不一致" | "证据不足";
+
+/** 单条「投资备忘录主张 ⇄ 多源尽调证据」对照卡片 */
+export interface VerificationCardItem {
+  /** 表内序号（保留原 HTML 排序） */
+  index: number;
+  /** 「投资备忘录 主张」原文，可含 [^N] 引用 */
+  claim: string;
+  /** 主张的来源锚点（一般来自投资备忘录某页） */
+  claimSources?: SourceAnchor[];
+  category: VerificationCategory;
+  verdict: VerificationVerdict;
+  riskLevel: RiskLevel;
+  /** 「证据摘要」正文（多源尽调材料的交叉印证 / 反证） */
+  evidence: string;
+  /** 「证据来源」点击展开：相关支持文档 */
+  evidenceSources: SourceAnchor[];
+}
+
 /** 尽调复核报告：单个章节内的内容块 */
 export type DiligenceContent =
   | { type: "paragraph"; text: string }
@@ -131,6 +161,19 @@ export type DiligenceContent =
       rows: string[][];
       /** 需要强调的列下标（从 0 开始） */
       emphasizeCol?: number;
+    }
+  | {
+      /**
+       * 交叉验证卡片块：把原 HTML 报告中的「单行验证项表格」抽象为视觉卡片，
+       * 头部展示分类 + 风险等级 + 结论标签，主体左右两列对照「主张 / 证据摘要」，
+       * 右下角「证据来源 ›」可展开支持文档锚点。
+       */
+      type: "verification-cards";
+      /** 选填子标题，例如「证据不足项（4 项）」 */
+      caption?: string;
+      items: VerificationCardItem[];
+      /** 默认是否折叠（默认 false，即展开） */
+      defaultCollapsed?: boolean;
     };
 
 /** 尽调复核报告：一个可折叠的大章节 */
