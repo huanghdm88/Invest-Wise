@@ -106,6 +106,7 @@ export type SemanticTone = "danger" | "warning" | "neutral" | "positive";
 export type VerificationCategory =
   | "财务数据"
   | "募资"
+  | "融资数据"
   | "法务合规"
   | "客户数据"
   | "业务数据"

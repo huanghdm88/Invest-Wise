@@ -33,6 +33,10 @@ const CATEGORY_STYLE: Record<
     wrap: "border-violet-200 bg-violet-50 text-violet-700",
     dot: "bg-violet-500",
   },
+  融资数据: {
+    wrap: "border-violet-200 bg-violet-50 text-violet-700",
+    dot: "bg-violet-500",
+  },
   法务合规: {
     wrap: "border-cyan-200 bg-cyan-50 text-cyan-700",
     dot: "bg-cyan-500",

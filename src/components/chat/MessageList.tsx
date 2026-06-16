@@ -13,6 +13,7 @@ import {
   IconChevronDown,
   IconChevronUp,
   IconDownload,
+  IconExternalLink,
   IconFactCheck,
   IconFile,
   IconFileSpreadsheet,
@@ -74,6 +75,45 @@ const fileKindIconMap: Record<FileKind, typeof IconFile> = {
   excel: IconFileSpreadsheet,
   other: IconFile,
 };
+
+/**
+ * 把 assistant 文本中的 http(s) 链接自动渲染成可点击的蓝色超链接。
+ * 兼容中文/全角空白前后的 URL；不修改其余文字。
+ */
+const URL_REGEX = /https?:\/\/[^\s\u3000\u4e00-\u9fa5]+[^\s\u3000\u4e00-\u9fa5\p{P}]/gu;
+
+function AutoLinkText({ text }: { text: string }) {
+  const parts: Array<{ type: "text" | "link"; value: string }> = [];
+  let lastIndex = 0;
+  for (const match of text.matchAll(URL_REGEX)) {
+    const start = match.index ?? 0;
+    if (start > lastIndex) parts.push({ type: "text", value: text.slice(lastIndex, start) });
+    parts.push({ type: "link", value: match[0] });
+    lastIndex = start + match[0].length;
+  }
+  if (lastIndex < text.length) parts.push({ type: "text", value: text.slice(lastIndex) });
+  if (parts.length === 0) return <>{text}</>;
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.type === "link" ? (
+          <a
+            key={i}
+            href={p.value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="break-all text-sky-600 underline decoration-sky-300 underline-offset-2 transition-colors hover:text-sky-700 hover:decoration-sky-500"
+          >
+            {p.value}
+            <SFIcon icon={IconExternalLink} size={11} className="ml-0.5 inline-block align-[-2px]" />
+          </a>
+        ) : (
+          <span key={i}>{p.value}</span>
+        )
+      )}
+    </>
+  );
+}
 
 /** 用户消息下方的附件标签条：单个直接展示；超过 3 个时收起 + 「+N」展开 */
 function UserAttachmentTags({
@@ -185,7 +225,7 @@ export function MessageList({
                       </div>
                     )}
                     {msg.text && (
-                      <div className="rounded-2xl rounded-tr-none bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm">
+                      <div className="rounded-tl-2xl rounded-bl-2xl rounded-br-2xl bg-slate-900 px-4 py-2.5 text-sm text-white shadow-sm">
                         {msg.text}
                       </div>
                     )}
@@ -216,9 +256,9 @@ export function MessageList({
                       return (
                         <div
                           key={i}
-                          className="px-1 text-sm leading-relaxed text-slate-800"
+                          className="whitespace-pre-wrap px-1 text-sm leading-relaxed text-slate-800"
                         >
-                          {block.text}
+                          <AutoLinkText text={block.text} />
                         </div>
                       );
                     case "clarification":

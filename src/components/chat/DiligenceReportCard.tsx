@@ -8,7 +8,7 @@ import { SFIcon } from "@/src/components/ui/sf-icon";
 import {
   IconChecklist,
   IconChevronDown,
-  IconChevronLeft,
+  IconChevronRight,
   IconInfo,
 } from "@/src/lib/icons";
 import { cn } from "@/src/lib/utils";
@@ -527,17 +527,40 @@ export function DiligenceReportCard({
         </div>
       )}
 
-      {/* —— 快捷目录 + 正文 —— */}
+      {/* —— 正文 + 右侧快捷目录 ——
+          目录始终在「右侧」，折叠态只是从 200px 列收缩成 36px 小窄列，
+          位置保持原地，避免视觉跳转 */}
       <div
         className={cn(
           "lg:grid lg:gap-5",
           tocCollapsed
-            ? "lg:grid-cols-[40px_minmax(0,1fr)]"
-            : "lg:grid-cols-[200px_minmax(0,1fr)]"
+            ? "lg:grid-cols-[minmax(0,1fr)_36px]"
+            : "lg:grid-cols-[minmax(0,1fr)_200px]"
         )}
       >
-        {/* 目录 */}
-        <nav className="mb-4 lg:mb-0">
+        {/* 正文章节 —— 永远在左侧 */}
+        <div className="order-2 min-w-0 space-y-3 lg:order-1">
+          {block.sections.map((s) => (
+            <SectionBlock
+              key={s.id}
+              section={s}
+              open={openIds.has(s.id)}
+              onToggle={() => toggle(s.id)}
+              citations={block.citations}
+              onView={onViewSource}
+              registerRef={(el) => {
+                sectionRefs.current[s.id] = el;
+              }}
+            />
+          ))}
+
+          {block.citations.length > 0 && (
+            <CitationsFooter citations={block.citations} onView={onViewSource} />
+          )}
+        </div>
+
+        {/* 目录 —— 永远在右侧；折叠态只显示一颗 36×36 的图标按钮 */}
+        <nav className="order-1 mb-4 lg:order-2 lg:mb-0">
           <div className="lg:sticky lg:top-2">
             {tocCollapsed ? (
               <button
@@ -545,9 +568,9 @@ export function DiligenceReportCard({
                 onClick={() => setTocCollapsed(false)}
                 title="展开目录"
                 aria-label="展开目录"
-                className="flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-100 hover:text-slate-900"
               >
-                <SFIcon icon={IconChecklist} size={15} />
+                <SFIcon icon={IconChecklist} size={14} />
               </button>
             ) : (
               <>
@@ -570,7 +593,7 @@ export function DiligenceReportCard({
                       aria-label="收起目录"
                       className="flex h-5 w-5 items-center justify-center rounded text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                     >
-                      <SFIcon icon={IconChevronLeft} size={12} />
+                      <SFIcon icon={IconChevronRight} size={12} />
                     </button>
                   </div>
                 </div>
@@ -607,27 +630,6 @@ export function DiligenceReportCard({
             )}
           </div>
         </nav>
-
-        {/* 正文章节 */}
-        <div className="min-w-0 space-y-3">
-          {block.sections.map((s) => (
-            <SectionBlock
-              key={s.id}
-              section={s}
-              open={openIds.has(s.id)}
-              onToggle={() => toggle(s.id)}
-              citations={block.citations}
-              onView={onViewSource}
-              registerRef={(el) => {
-                sectionRefs.current[s.id] = el;
-              }}
-            />
-          ))}
-
-          {block.citations.length > 0 && (
-            <CitationsFooter citations={block.citations} onView={onViewSource} />
-          )}
-        </div>
       </div>
     </div>
   );

@@ -16,6 +16,7 @@
 export {
   // —— 方向 / 操作 ——
   sfArrowRight as IconArrowRight,
+  sfArrowUpRight as IconExternalLink,
   sfArrowUp as IconArrowUp,
   sfArrowDownToLine as IconDownload,
   sfArrowUpToLine as IconUpload,

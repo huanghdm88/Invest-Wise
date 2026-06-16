@@ -6,6 +6,7 @@ import type {
 } from "@/src/types";
 import { haizhiReportMessages } from "@/src/data/haizhi-report";
 import { sifanshiReportMessages } from "@/src/data/sifanshi-report";
+import { sifanshiValidationReportMessages } from "@/src/data/sifanshi-validation-report";
 
 /**
  * 演示子对话 - 围绕极光智算项目拆解为多条独立子对话：
@@ -731,6 +732,14 @@ export const mockConversations: Conversation[] = [
     messages: sifanshiReportMessages,
     createdAt: "2026-06-04T14:00:00+08:00",
     updatedAt: "2026-06-04T14:18:00+08:00",
+  },
+  {
+    id: "conv-sifanshi-validation",
+    projectId: "proj-sifanshi",
+    title: "投资备忘录事实交叉验证",
+    messages: sifanshiValidationReportMessages,
+    createdAt: "2026-06-11T09:40:00+08:00",
+    updatedAt: "2026-06-11T09:48:30+08:00",
   },
 ];
 

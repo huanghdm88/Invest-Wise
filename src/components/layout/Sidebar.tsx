@@ -108,15 +108,16 @@ export function Sidebar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const beginConvRename = (c: Conversation) => {
-    setConvRenameId(c.id);
+  const beginConvRename = (c: Conversation, rowKey: string) => {
+    setConvRenameId(rowKey);
     setConvRenameDraft(c.title);
     setConvMenuId(null);
   };
 
-  const commitConvRename = () => {
-    if (convRenameId && convRenameDraft.trim()) {
-      onRenameConversation(convRenameId, convRenameDraft.trim());
+  const commitConvRename = (convId: string, newTitle: string) => {
+    const trimmed = newTitle.trim();
+    if (trimmed) {
+      onRenameConversation(convId, trimmed);
     }
     setConvRenameId(null);
     setConvRenameDraft("");
@@ -371,41 +372,48 @@ export function Sidebar({
 
               {expanded && !renaming && projectConvs.length > 0 && (
                 <ul className="mb-1 mt-0.5 space-y-0.5">
-                  {visibleConvs.map((c) => (
-                    <ConvRow
-                      key={c.id}
-                      conv={c}
-                      indent
-                      active={c.id === currentConversationId}
-                      running={runningConversationIds?.has(c.id) ?? false}
-                      unread={unreadConversationIds?.has(c.id) ?? false}
-                      aborted={abortedConversationIds?.has(c.id) ?? false}
-                      menuOpen={convMenuId === c.id}
-                      renaming={convRenameId === c.id}
-                      renameDraft={convRenameDraft}
-                      onOpen={() => onOpenConversation(c.id)}
-                      onToggleMenu={() =>
-                        setConvMenuId(convMenuId === c.id ? null : c.id)
-                      }
-                      onBeginRename={() => beginConvRename(c)}
-                      onCommitRename={commitConvRename}
-                      onCancelRename={() => {
-                        setConvRenameId(null);
-                        setConvRenameDraft("");
-                      }}
-                      onChangeRenameDraft={setConvRenameDraft}
-                      onDelete={() => {
-                        setConvMenuId(null);
-                        if (
-                          confirm(
-                            `确定要删除对话「${c.title}」吗？此操作不可撤销。`
-                          )
-                        ) {
-                          onDeleteConversation(c.id);
+                  {visibleConvs.map((c) => {
+                    // 同一对话可能在「项目展开列表」与「最近」同时出现，
+                    // 用「位置 + convId」做复合 key，避免菜单/重命名状态串扰
+                    const rowKey = `proj-${p.id}:${c.id}`;
+                    return (
+                      <ConvRow
+                        key={c.id}
+                        conv={c}
+                        indent
+                        active={c.id === currentConversationId}
+                        running={runningConversationIds?.has(c.id) ?? false}
+                        unread={unreadConversationIds?.has(c.id) ?? false}
+                        aborted={abortedConversationIds?.has(c.id) ?? false}
+                        menuOpen={convMenuId === rowKey}
+                        renaming={convRenameId === rowKey}
+                        renameDraft={convRenameDraft}
+                        onOpen={() => onOpenConversation(c.id)}
+                        onToggleMenu={() =>
+                          setConvMenuId(convMenuId === rowKey ? null : rowKey)
                         }
-                      }}
-                    />
-                  ))}
+                        onBeginRename={() => beginConvRename(c, rowKey)}
+                        onCommitRename={(newTitle) =>
+                          commitConvRename(c.id, newTitle)
+                        }
+                        onCancelRename={() => {
+                          setConvRenameId(null);
+                          setConvRenameDraft("");
+                        }}
+                        onChangeRenameDraft={setConvRenameDraft}
+                        onDelete={() => {
+                          setConvMenuId(null);
+                          if (
+                            confirm(
+                              `确定要删除对话「${c.title}」吗？此操作不可撤销。`
+                            )
+                          ) {
+                            onDeleteConversation(c.id);
+                          }
+                        }}
+                      />
+                    );
+                  })}
                   {hasMoreConvs && (
                     <li>
                       <button
@@ -450,40 +458,45 @@ export function Sidebar({
             最近
           </h2>
           <ul className="space-y-0.5">
-            {recentConversations.map((c) => (
-              <ConvRow
-                key={c.id}
-                conv={c}
-                active={c.id === currentConversationId}
-                running={runningConversationIds?.has(c.id) ?? false}
-                unread={unreadConversationIds?.has(c.id) ?? false}
-                aborted={abortedConversationIds?.has(c.id) ?? false}
-                menuOpen={convMenuId === c.id}
-                renaming={convRenameId === c.id}
-                renameDraft={convRenameDraft}
-                onOpen={() => onOpenConversation(c.id)}
-                onToggleMenu={() =>
-                  setConvMenuId(convMenuId === c.id ? null : c.id)
-                }
-                onBeginRename={() => beginConvRename(c)}
-                onCommitRename={commitConvRename}
-                onCancelRename={() => {
-                  setConvRenameId(null);
-                  setConvRenameDraft("");
-                }}
-                onChangeRenameDraft={setConvRenameDraft}
-                onDelete={() => {
-                  setConvMenuId(null);
-                  if (
-                    confirm(
-                      `确定要删除对话「${c.title}」吗？此操作不可撤销。`
-                    )
-                  ) {
-                    onDeleteConversation(c.id);
+            {recentConversations.map((c) => {
+              const rowKey = `recent:${c.id}`;
+              return (
+                <ConvRow
+                  key={c.id}
+                  conv={c}
+                  active={c.id === currentConversationId}
+                  running={runningConversationIds?.has(c.id) ?? false}
+                  unread={unreadConversationIds?.has(c.id) ?? false}
+                  aborted={abortedConversationIds?.has(c.id) ?? false}
+                  menuOpen={convMenuId === rowKey}
+                  renaming={convRenameId === rowKey}
+                  renameDraft={convRenameDraft}
+                  onOpen={() => onOpenConversation(c.id)}
+                  onToggleMenu={() =>
+                    setConvMenuId(convMenuId === rowKey ? null : rowKey)
                   }
-                }}
-              />
-            ))}
+                  onBeginRename={() => beginConvRename(c, rowKey)}
+                  onCommitRename={(newTitle) =>
+                    commitConvRename(c.id, newTitle)
+                  }
+                  onCancelRename={() => {
+                    setConvRenameId(null);
+                    setConvRenameDraft("");
+                  }}
+                  onChangeRenameDraft={setConvRenameDraft}
+                  onDelete={() => {
+                    setConvMenuId(null);
+                    if (
+                      confirm(
+                        `确定要删除对话「${c.title}」吗？此操作不可撤销。`
+                      )
+                    ) {
+                      onDeleteConversation(c.id);
+                    }
+                  }}
+                />
+              );
+            })}
           </ul>
         </>
       )}
@@ -728,7 +741,8 @@ function ConvRow({
   onOpen: () => void;
   onToggleMenu: () => void;
   onBeginRename: () => void;
-  onCommitRename: () => void;
+  /** 入参为最新草稿内容，由父级负责 trim + 调用 onRenameConversation */
+  onCommitRename: (newTitle: string) => void;
   onCancelRename: () => void;
   onChangeRenameDraft: (v: string) => void;
   onDelete: () => void;
@@ -749,7 +763,7 @@ function ConvRow({
               autoFocus
               value={renameDraft}
               onChange={(e) => onChangeRenameDraft(e.target.value)}
-              onBlur={onCommitRename}
+              onBlur={(e) => onCommitRename(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") (e.target as HTMLInputElement).blur();
                 if (e.key === "Escape") onCancelRename();

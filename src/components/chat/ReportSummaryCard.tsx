@@ -10,7 +10,29 @@ import {
 } from "@/src/lib/icons";
 import { cn, formatRelative } from "@/src/lib/utils";
 import { isElevatedRisk, isHighRisk } from "@/src/lib/risk-level";
-import type { AssistantBlock, RiskLevel } from "@/src/types";
+import type { AssistantBlock, RiskLevel, VerificationCardItem } from "@/src/types";
+
+/** 从 diligence-report 的章节内容中汇总 verification-cards 的风险等级分布 */
+function summarizeVerificationCards(
+  block: Extract<AssistantBlock, { kind: "diligence-report" }>
+): {
+  total: number;
+  byRisk: Record<RiskLevel, number>;
+} | null {
+  const byRisk: Record<RiskLevel, number> = { R1: 0, R2: 0, R3: 0, R4: 0, R5: 0 };
+  let total = 0;
+  for (const section of block.sections) {
+    for (const blk of section.content) {
+      if (blk.type === "verification-cards") {
+        for (const item of blk.items as VerificationCardItem[]) {
+          byRisk[item.riskLevel] = (byRisk[item.riskLevel] ?? 0) + 1;
+          total += 1;
+        }
+      }
+    }
+  }
+  return total > 0 ? { total, byRisk } : null;
+}
 
 type ReportBlock = Extract<
   AssistantBlock,
@@ -95,6 +117,23 @@ function buildConfig(block: ReportBlock): SummaryConfig {
   }
 
   if (block.kind === "diligence-report") {
+    const verSummary = summarizeVerificationCards(block);
+    if (verSummary) {
+      const { total, byRisk } = verSummary;
+      return {
+        eyebrow: "投决交叉验证报告",
+        icon: IconFactCheck,
+        accent: "text-sky-600",
+        stats: [
+          { label: "执行核查", value: `${total} 条` },
+          { label: "R4 否决风险", value: `${byRisk.R4} 条`, tone: byRisk.R4 > 0 ? "high" : "neutral" },
+          { label: "R3 重大风险", value: `${byRisk.R3} 条`, tone: byRisk.R3 > 0 ? "high" : "neutral" },
+          { label: "R2 一般风险", value: `${byRisk.R2} 条`, tone: byRisk.R2 > 0 ? "medium" : "neutral" },
+          { label: "R1 低风险", value: `${byRisk.R1} 条` },
+        ],
+        level: block.verdict.riskLevel,
+      };
+    }
     return {
       eyebrow: "尽调复核报告",
       icon: IconShieldAlert,
