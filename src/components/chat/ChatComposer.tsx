@@ -65,6 +65,9 @@ export function ChatComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  // 指令已激活但未传附件时，点击发送按钮弹出的上传提示
+  const [hintOpen, setHintOpen] = useState(false);
+  const hintTimer = useRef<number | null>(null);
 
   /** 自适应高度 + 同步高亮叠层滚动 */
   const resize = (el: HTMLTextAreaElement) => {
@@ -94,6 +97,15 @@ export function ChatComposer({
   const canSend = requiresAttachment
     ? attachments.length > 0
     : text.trim().length > 0 || attachments.length > 0;
+  // 指令已激活但还没上传附件：发送按钮不可点击，但点击会提示上传
+  const blockedNoAttachment = requiresAttachment && attachments.length === 0;
+
+  /** 点击被禁用的发送按钮时，短暂弹出上传提示 */
+  const triggerUploadHint = () => {
+    setHintOpen(true);
+    if (hintTimer.current) window.clearTimeout(hintTimer.current);
+    hintTimer.current = window.setTimeout(() => setHintOpen(false), 2200);
+  };
 
   const send = () => {
     if (!canSend) return;
@@ -237,15 +249,34 @@ export function ChatComposer({
               <SFIcon icon={IconStop} size={13} />
             </Button>
           ) : (
-            <Button
-              variant="default"
-              size="icon"
-              disabled={!canSend}
-              onClick={send}
-              aria-label="发送"
-            >
-              <SFIcon icon={IconArrowUp} size={14} />
-            </Button>
+            <div className="relative self-center">
+              <Button
+                variant="default"
+                size="icon"
+                disabled={!canSend}
+                onClick={send}
+                aria-label="发送"
+              >
+                <SFIcon icon={IconArrowUp} size={14} />
+              </Button>
+              {/* 指令已激活但未传附件：发送按钮保持禁用，叠加透明层捕获点击以弹出提示 */}
+              {blockedNoAttachment && (
+                <button
+                  type="button"
+                  aria-label="请上传投决议案或投资备忘录"
+                  onClick={triggerUploadHint}
+                  className="absolute inset-0 cursor-not-allowed rounded-[inherit]"
+                />
+              )}
+              {hintOpen && (
+                <div
+                  role="tooltip"
+                  className="absolute bottom-full right-0 z-50 mb-2 whitespace-nowrap rounded-md bg-slate-900 px-2.5 py-1.5 text-xs text-white shadow-md"
+                >
+                  请上传投决议案或投资备忘录
+                </div>
+              )}
+            </div>
           )}
         </div>
       </div>
