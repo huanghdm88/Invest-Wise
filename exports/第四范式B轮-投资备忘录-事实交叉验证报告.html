@@ -112,11 +112,7 @@ body {
   border-radius: 14px;
   padding: 12px 14px;
 }
-.metric-label {
-  margin: 0 0 4px;
-  font-size: 11px;
-  color: var(--text-soft);
-}
+.metric-label { margin: 0 0 4px; font-size: 11px; color: var(--text-soft); }
 .metric-value {
   margin: 0;
   font-size: 20px;
@@ -125,53 +121,10 @@ body {
   line-height: 1;
   color: var(--text);
 }
-.metric-sub {
-  margin: 6px 0 0;
-  font-size: 11px;
-  color: var(--text-soft);
-}
+.metric-sub { margin: 6px 0 0; font-size: 11px; color: var(--text-soft); }
 
-/* ============ 主体（目录 + 章节） ============ */
-.report-main {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 24px;
-}
-@media (max-width: 880px) {
-  .report-main { grid-template-columns: 1fr; }
-}
-.toc-wrap { position: sticky; top: 16px; align-self: start; }
-.toc {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 12px 14px;
-  box-shadow: var(--shadow);
-}
-.toc-title {
-  margin: 0 0 8px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-soft);
-}
-.toc ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.toc li + li { margin-top: 2px; }
-.toc a {
-  display: block;
-  padding: 6px 8px;
-  border-radius: 8px;
-  color: var(--text-muted);
-  text-decoration: none;
-  font-size: 12px;
-  line-height: 1.4;
-}
-.toc a:hover { background: #f1f5f9; color: var(--text); }
+/* ============ 主体（章节，下载版不含目录） ============ */
+.report-main { display: block; }
 
 /* ============ 章节 ============ */
 .sections-wrap { display: flex; flex-direction: column; gap: 12px; }
@@ -205,19 +158,8 @@ body {
 .section-body { padding: 4px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
 
 /* ============ 通用文本 ============ */
-.paragraph {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--text);
-}
-.bullets {
-  margin: 0;
-  padding-left: 22px;
-  font-size: 13px;
-  line-height: 1.75;
-  color: var(--text);
-}
+.paragraph { margin: 0; font-size: 13px; line-height: 1.75; color: var(--text); }
+.bullets { margin: 0; padding-left: 22px; font-size: 13px; line-height: 1.75; color: var(--text); }
 .bullets.dotted { list-style-type: disc; }
 .bullets li + li { margin-top: 4px; }
 mark.hl {
@@ -246,11 +188,7 @@ sup.cite a {
 sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--text); }
 
 /* ============ 标注（callout） ============ */
-.callout {
-  border: 1px solid;
-  border-radius: 12px;
-  padding: 12px 14px;
-}
+.callout { border: 1px solid; border-radius: 12px; padding: 12px 14px; }
 .callout-title { margin: 0 0 4px; font-size: 12px; font-weight: 600; }
 .callout-body { margin: 0; font-size: 12.5px; line-height: 1.65; color: var(--text); }
 .tone-danger { background: rgba(254, 226, 226, 0.5); border-color: #fecaca; }
@@ -267,50 +205,20 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 .text-neutral { color: var(--text-muted); }
 
 /* ============ KPI 子卡 + 横向条形 ============ */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px;
-}
-.stat-card {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 12px 14px;
-}
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+.stat-card { border: 1px solid var(--border); background: #ffffff; border-radius: 12px; padding: 12px 14px; }
 .stat-label { margin: 0 0 4px; font-size: 11px; color: var(--text-soft); }
-.stat-value {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--text);
-}
+.stat-value { margin: 0; font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text); }
 .stat-sub { margin: 6px 0 0; font-size: 11px; color: var(--text-soft); }
 
-.bars-block {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 12px;
-  padding: 14px 16px;
-}
-.bars-caption {
-  margin: 0 0 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-soft);
-}
+.bars-block { border: 1px solid var(--border); background: #ffffff; border-radius: 12px; padding: 14px 16px; }
+.bars-caption { margin: 0 0 10px; font-size: 11px; font-weight: 600; color: var(--text-soft); }
 .bars-list { display: flex; flex-direction: column; gap: 10px; }
 .bar-row { display: flex; flex-direction: column; gap: 4px; }
 .bar-meta { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .bar-label { font-size: 12px; color: var(--text-muted); }
 .bar-value { font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
-.bar-track {
-  height: 8px;
-  background: #f1f5f9;
-  border-radius: 999px;
-  overflow: hidden;
-}
+.bar-track { height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
 .bar-fill { height: 100%; border-radius: 999px; transition: width 0.3s ease; }
 .bar-fill-positive { background: #34d399; }
 .bar-fill-warning { background: #fbbf24; }
@@ -318,37 +226,17 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 .bar-fill-neutral { background: #94a3b8; }
 
 /* ============ 表格 ============ */
-.table-wrap {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-}
+.table-wrap { border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
 .table-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .table-wrap thead tr { background: #f8fafc; }
-.table-wrap th {
-  text-align: left;
-  padding: 10px 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border);
-}
-.table-wrap td {
-  padding: 10px 12px;
-  vertical-align: top;
-  color: var(--text);
-  border-bottom: 1px solid var(--border-soft);
-}
+.table-wrap th { text-align: left; padding: 10px 12px; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.table-wrap td { padding: 10px 12px; vertical-align: top; color: var(--text); border-bottom: 1px solid var(--border-soft); }
 .table-wrap td.emphasize { font-weight: 600; color: var(--text); }
 .table-wrap tbody tr:last-child td { border-bottom: none; }
 
 /* ============ 验证卡片 ============ */
 .vcards { display: flex; flex-direction: column; gap: 10px; }
-.vcards-group {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 12px;
-  overflow: hidden;
-}
+.vcards-group { border: 1px solid var(--border); background: #ffffff; border-radius: 12px; overflow: hidden; }
 .vcards-group > summary {
   cursor: pointer;
   list-style: none;
@@ -364,13 +252,7 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 .vcards-group[open] > summary::after { content: " ▴"; }
 .vcards-group > div { padding: 10px 12px; }
 
-.vcard {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-}
+.vcard { border: 1px solid var(--border); background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04); }
 .vcard-head {
   display: flex;
   flex-wrap: wrap;
@@ -392,13 +274,7 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
   border: 1px solid transparent;
   border-radius: 999px;
 }
-.chip-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.7;
-}
+.chip-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: 0.7; }
 .cat-blue { border-color: #bfdbfe; background: #eff6ff; color: #1d4ed8; }
 .cat-violet { border-color: #ddd6fe; background: #f5f3ff; color: #6d28d9; }
 .cat-cyan { border-color: #a5f3fc; background: #ecfeff; color: #0e7490; }
@@ -406,6 +282,7 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 .cat-emerald { border-color: #a7f3d0; background: #ecfdf5; color: #047857; }
 .cat-pink { border-color: #fbcfe8; background: #fdf2f8; color: #be185d; }
 .cat-indigo { border-color: #c7d2fe; background: #eef2ff; color: #4338ca; }
+.cat-slate { border-color: #e2e8f0; background: #f8fafc; color: #475569; }
 
 .chip-risk-R1 { border-color: #a7f3d0; background: #ecfdf5; color: #065f46; }
 .chip-risk-R2 { border-color: #bae6fd; background: #f0f9ff; color: #0369a1; }
@@ -418,22 +295,10 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 .verdict-bad { border-color: #fecaca; background: #fef2f2; color: #b91c1c; font-weight: 600; }
 .verdict-insufficient { border-color: var(--border); background: #f1f5f9; color: var(--text-muted); font-weight: 600; }
 
-.vcard-body {
-  display: grid;
-  grid-template-columns: 1.05fr 1fr;
-}
-@media (max-width: 720px) {
-  .vcard-body { grid-template-columns: 1fr; }
-}
-.vcard-claim {
-  position: relative;
-  padding: 14px 16px 14px 20px;
-  background: #ffffff;
-  border-right: 1px solid var(--border-soft);
-}
-@media (max-width: 720px) {
-  .vcard-claim { border-right: 0; border-bottom: 1px solid var(--border-soft); }
-}
+.vcard-body { display: grid; grid-template-columns: 1.05fr 1fr; }
+@media (max-width: 720px) { .vcard-body { grid-template-columns: 1fr; } }
+.vcard-claim { position: relative; padding: 14px 16px 14px 20px; background: #ffffff; border-right: 1px solid var(--border-soft); }
+@media (max-width: 720px) { .vcard-claim { border-right: 0; border-bottom: 1px solid var(--border-soft); } }
 .vcard-claim::before {
   content: "";
   position: absolute;
@@ -445,6 +310,7 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
   background: rgba(59, 130, 246, 0.8);
 }
 .vcard-evidence { padding: 14px 16px; background: rgba(241, 245, 249, 0.4); }
+.vcard-deviation { padding: 12px 16px; border-top: 1px solid var(--border-soft); background: #fffdf7; display: flex; flex-direction: column; gap: 6px; }
 .vcard-eyebrow {
   margin: 0 0 8px;
   font-size: 11px;
@@ -456,82 +322,28 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
   align-items: center;
   gap: 6px;
 }
-.vcard-index {
-  background: #0f172a;
-  color: #ffffff;
-  padding: 1px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-}
-.vcard-text {
-  margin: 0;
-  white-space: pre-wrap;
-  font-size: 13px;
-  line-height: 1.75;
-}
+.vcard-index { background: #0f172a; color: #ffffff; padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+.vcard-text { margin: 0; white-space: pre-wrap; font-size: 13px; line-height: 1.75; }
 .claim-text { color: var(--text); font-weight: 500; }
 .evidence-text { color: var(--text-muted); font-size: 12.5px; }
 .src-chips { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 4px; }
-.src-chip {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  background: #ffffff;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
+.src-chip { display: inline-block; padding: 2px 8px; font-size: 10.5px; color: var(--text-muted); background: #ffffff; border: 1px solid var(--border); border-radius: 6px; }
 .src-list { margin-top: 12px; }
-.src-list > summary {
-  cursor: pointer;
-  list-style: none;
-  text-align: right;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--accent);
-  user-select: none;
-}
+.src-list > summary { cursor: pointer; list-style: none; text-align: right; font-size: 11.5px; font-weight: 500; color: var(--accent); user-select: none; }
 .src-list > summary::-webkit-details-marker { display: none; }
 .src-list > summary::after { content: " ›"; }
 .src-list[open] > summary::after { content: " ▾"; }
 .src-list > div { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
-.src-anchor {
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 8px;
-  padding: 6px 10px;
-}
+.src-anchor { border: 1px solid var(--border); background: #ffffff; border-radius: 8px; padding: 6px 10px; }
 .src-doc { font-size: 11.5px; color: var(--text-muted); }
 
 /* ============ 引用底部清单 ============ */
-.citations {
-  margin-top: 32px;
-  padding: 22px 26px;
-  border: 1px solid var(--border);
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: var(--shadow);
-}
-.citations h2 {
-  margin: 0 0 14px;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text);
-}
+.citations { margin-top: 32px; padding: 22px 26px; border: 1px solid var(--border); background: #ffffff; border-radius: 16px; box-shadow: var(--shadow); }
+.citations h2 { margin: 0 0 14px; font-size: 14px; font-weight: 600; color: var(--text); }
 .citations-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 12px; }
 .citation { display: flex; align-items: flex-start; gap: 12px; padding: 8px 0; border-top: 1px solid var(--border-soft); }
 .citation:first-child { border-top: 0; padding-top: 0; }
-.cite-index {
-  background: #f1f5f9;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1px 6px;
-  font-size: 10.5px;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
+.cite-index { background: #f1f5f9; border: 1px solid var(--border); border-radius: 6px; padding: 1px 6px; font-size: 10.5px; font-weight: 600; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .cite-body { flex: 1; min-width: 0; }
 .cite-doc { margin: 0 0 4px; font-size: 12px; font-weight: 600; color: var(--text); }
 .cite-excerpt { margin: 0; font-size: 12px; line-height: 1.7; color: var(--text-muted); }
@@ -540,8 +352,6 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 @media print {
   body { background: #ffffff; }
   .container { padding: 0; max-width: none; }
-  .toc-wrap { display: none; }
-  .report-main { grid-template-columns: 1fr; }
   .section, .vcard, .vcards-group, .metric-card, .stat-card, .bars-block, .table-wrap, .verdict-card, .report-header, .citations {
     break-inside: avoid;
     box-shadow: none;
@@ -604,10 +414,6 @@ sup.cite a:hover { background: var(--text); color: #ffffff; border-color: var(--
 </div></section>
 
 <main class="report-main">
-  <aside class="toc-wrap"><nav class="toc">
-  <p class="toc-title">目录</p>
-  <ol><li><a href="#overview">1. 验证概览与风险分布</a></li><li><a href="#top-risks">2. 关键风险项 TOP 7</a></li><li><a href="#r2-partial">3. R2 一般风险 · 部分一致（1 项）</a></li><li><a href="#r2-insufficient">4. R2 一般风险 · 证据不足（10 项）</a></li><li><a href="#r1-partial">5. R1 低风险 · 部分一致（1 项）</a></li><li><a href="#r1-consistent">6. R1 低风险 · 一致（3 项）</a></li><li><a href="#conclusion">7. 复核结论与下一步建议</a></li></ol>
-</nav></aside>
   <div class="sections-wrap"><details id="overview" class="section" open>
   <summary class="section-head"><span>1. 验证概览与风险分布</span></summary>
   <div class="section-body"><p class="paragraph">本次交叉验证以《第四范式财务尽调报告》《第四范式法律尽调报告》为核心证据库，围绕《第四范式 B 轮投资备忘录》提出的 <mark class="hl">15 项关键主张</mark> 做多源交叉印证。已加载的尽调材料中 <mark class="hl">未发现可直接归为 R4 否决风险的硬性事实矛盾</mark>，亦未识别出 R3 重大风险；本轮最高等级风险为 <mark class="hl">R2 一般风险 11 项</mark>，集中分布于 B 轮交易条款 / 关键业务效果数据 / 核心团队履历 / 行业宏观数据四大类<sup class="cite"><a href="#cite-1">1</a></sup><sup class="cite"><a href="#cite-2">2</a></sup><sup class="cite"><a href="#cite-3">3</a></sup><sup class="cite"><a href="#cite-5">5</a></sup><sup class="cite"><a href="#cite-6">6</a></sup>。</p>

@@ -5,6 +5,7 @@ import type {
   RunningTask,
 } from "@/src/types";
 import { haizhiReportMessages } from "@/src/data/haizhi-report";
+import { haizhiValidationReportMessages } from "@/src/data/haizhi-validation-report";
 import { sifanshiReportMessages } from "@/src/data/sifanshi-report";
 import { sifanshiValidationReportMessages } from "@/src/data/sifanshi-validation-report";
 
@@ -724,6 +725,14 @@ export const mockConversations: Conversation[] = [
     messages: haizhiReportMessages,
     createdAt: "2026-05-31T17:00:00+08:00",
     updatedAt: "2026-05-31T17:18:00+08:00",
+  },
+  {
+    id: "conv-haizhi-validation",
+    projectId: "proj-haizhi",
+    title: "投决报告事实交叉验证",
+    messages: haizhiValidationReportMessages,
+    createdAt: "2026-06-18T10:10:00+08:00",
+    updatedAt: "2026-06-18T10:16:40+08:00",
   },
   {
     id: "conv-sifanshi-cross-check",

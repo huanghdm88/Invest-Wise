@@ -99,7 +99,7 @@ export function KnowledgeBase({ project, onUpdateFiles }: KnowledgeBaseProps) {
         <p className="text-xs text-slate-500">支持 PDF / Word / PPT / Excel · 单文件 ≤ 50 MB</p>
         <Button variant="outline" size="sm" className="mt-2" onClick={() => inputRef.current?.click()}>
           <SFIcon icon={IconPlus} size={12} />
-          浏览文件
+          上传文件
         </Button>
         <input
           ref={inputRef}

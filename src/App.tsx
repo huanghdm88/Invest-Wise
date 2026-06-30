@@ -23,8 +23,10 @@ import {
 import { mockProjects } from "@/src/data/mock-projects";
 import {
   extractConversationReports,
+  isReportBlock,
   type ReportBlock,
 } from "@/src/lib/project-reports";
+import { downloadReportHtml } from "@/src/lib/report-html";
 import { cn, isListedConversation, uid } from "@/src/lib/utils";
 import type {
   AssistantBlock,
@@ -647,8 +649,13 @@ function App() {
     updateProject({ files });
   };
 
-  const handleExport = () => {
-    alert("导出为报告（Markdown / Word）— Demo 中保留入口");
+  const handleExport = (block?: AssistantBlock) => {
+    // 注意：抽屉下载按钮以 onClick={onDownload} 调用，会把事件对象作为首参传入，
+    // 因此这里只在传入的是合法报告块时使用它，否则回退到当前打开的报告。
+    const target =
+      block && isReportBlock(block) ? block : openReport;
+    if (!target || !isReportBlock(target)) return;
+    downloadReportHtml(target);
   };
 
   /**

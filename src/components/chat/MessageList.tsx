@@ -37,7 +37,7 @@ interface MessageListProps {
     values: Record<string, string>,
     followUp?: AssistantBlock[]
   ) => void;
-  onExport: () => void;
+  onExport: (block: AssistantBlock) => void;
   /** 点击报告汇总卡片，在右侧 Canvas 抽屉中展开完整报告 */
   onOpenReport: (block: AssistantBlock) => void;
   /** 智能路由分歧时，用户选择具体模式继续执行 */
@@ -241,7 +241,8 @@ export function MessageList({
             );
           }
 
-          const hasReportBlock = msg.blocks?.some((b) => isReportBlock(b));
+          const reportBlock = msg.blocks?.find((b) => isReportBlock(b));
+          const hasReportBlock = Boolean(reportBlock);
           const isNewReport = newReportMessageIds?.has(msg.id) ?? false;
 
           return (
@@ -340,15 +341,15 @@ export function MessageList({
                   <Button variant="ghost" size="icon-sm" aria-label="不准确" title="不准确">
                     <SFIcon icon={IconThumbDown} size={13} className="text-slate-400" />
                   </Button>
-                  {hasReportBlock && (
+                  {reportBlock && (
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-7 gap-1 text-[11px] text-slate-500 hover:text-slate-900"
-                      onClick={onExport}
+                      onClick={() => onExport(reportBlock)}
                     >
                       <SFIcon icon={IconDownload} size={11} />
-                      导出为报告（Markdown / Word）
+                      导出为 HTML
                     </Button>
                   )}
                 </div>

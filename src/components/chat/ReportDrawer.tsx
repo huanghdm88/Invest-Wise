@@ -95,6 +95,8 @@ export function ReportDrawer({
   const showable = block ?? lastBlock;
   const displayMeta = meta ?? lastMeta;
   const hm = showable ? headerMeta[showable.kind] : null;
+  const hideChrome =
+    showable?.kind === "diligence-report" && showable.hideChrome === true;
 
   return (
     <div
@@ -133,17 +135,19 @@ export function ReportDrawer({
                 <h2 className="mt-1.5 truncate text-[17px] font-semibold leading-snug text-gray-900">
                   {showable.title}
                 </h2>
-                <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-gray-500">
-                  {showable.summary}
-                </p>
+                {!hideChrome && showable.summary && (
+                  <p className="mt-1 line-clamp-2 text-[12px] leading-relaxed text-gray-500">
+                    {showable.summary}
+                  </p>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 {onDownload && (
                   <Button
                     variant="outline"
                     onClick={onDownload}
-                    aria-label="下载报告"
-                    title="下载报告（Markdown / Word）"
+                    aria-label="导出 HTML"
+                    title="导出为 HTML"
                     className="flex h-9 w-9 items-center justify-center rounded-lg p-0"
                   >
                     <SFIcon icon={IconDownload} size={13} />
@@ -162,11 +166,13 @@ export function ReportDrawer({
             </div>
 
             <div className="thin-scroll min-h-0 flex-1 overflow-y-auto bg-[#fafafa] px-6 py-6">
-              <ReportDetailMeta
-                sourceLabel={displayMeta?.sourceLabel}
-                createdAt={displayMeta?.createdAt}
-                detailHint={hm.detailHint}
-              />
+              {!hideChrome && (
+                <ReportDetailMeta
+                  sourceLabel={displayMeta?.sourceLabel}
+                  createdAt={displayMeta?.createdAt}
+                  detailHint={hm.detailHint}
+                />
+              )}
 
               {showable.kind === "fact-verification" && (
                 <FactVerificationCard

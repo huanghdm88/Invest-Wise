@@ -462,6 +462,7 @@ export function DiligenceReportCard({
   return (
     <div ref={rootRef} className="space-y-4">
       {/* —— 结论概览 —— */}
+      {!block.hideChrome && (
       <div className="rounded-2xl border border-slate-200 bg-gradient-to-br from-white to-slate-50/60 p-5">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
@@ -497,6 +498,7 @@ export function DiligenceReportCard({
           />
         </p>
       </div>
+      )}
 
       {/* —— 关键指标可视化 —— */}
       {block.metrics.length > 0 && (

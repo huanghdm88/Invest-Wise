@@ -107,11 +107,13 @@ export type VerificationCategory =
   | "财务数据"
   | "募资"
   | "融资数据"
+  | "公司数据"
   | "法务合规"
   | "客户数据"
   | "业务数据"
   | "市场行业"
-  | "团队治理";
+  | "团队治理"
+  | "其他";
 
 /** 交叉验证条目的「结论」枚举：一致 / 部分一致 / 不一致 / 证据不足 */
 export type VerificationVerdict = "一致" | "部分一致" | "不一致" | "证据不足";
@@ -311,6 +313,11 @@ export type AssistantBlock =
       company: string;
       /** 执行摘要 */
       summary: string;
+      /**
+       * 是否隐藏「报告详情」「尽调复核结论」等外壳模块及抽屉头部摘要副标题。
+       * 用于需严格按源文档内容呈现、不附加派生结论的报告。
+       */
+      hideChrome?: boolean;
       /** 总体结论 */
       verdict: {
         /** 最终建议，如「建议暂缓」 */

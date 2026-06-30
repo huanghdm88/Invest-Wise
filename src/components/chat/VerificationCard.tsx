@@ -37,6 +37,10 @@ const CATEGORY_STYLE: Record<
     wrap: "border-violet-200 bg-violet-50 text-violet-700",
     dot: "bg-violet-500",
   },
+  公司数据: {
+    wrap: "border-cyan-200 bg-cyan-50 text-cyan-700",
+    dot: "bg-cyan-500",
+  },
   法务合规: {
     wrap: "border-cyan-200 bg-cyan-50 text-cyan-700",
     dot: "bg-cyan-500",
@@ -56,6 +60,10 @@ const CATEGORY_STYLE: Record<
   团队治理: {
     wrap: "border-indigo-200 bg-indigo-50 text-indigo-700",
     dot: "bg-indigo-500",
+  },
+  其他: {
+    wrap: "border-slate-200 bg-slate-50 text-slate-600",
+    dot: "bg-slate-400",
   },
 };
 

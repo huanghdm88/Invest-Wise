@@ -131,7 +131,7 @@ export function KnowledgePanel({
           onClick={() => fileInputRef.current?.click()}
         >
           <SFIcon icon={IconPlus} size={11} />
-          浏览文件
+          上传文件
         </Button>
         <input
           ref={fileInputRef}
